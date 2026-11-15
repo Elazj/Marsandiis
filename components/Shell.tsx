@@ -1,11 +1,14 @@
 'use client'
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ToastHost } from '@/components/ui'
 import OfflineBar from '@/components/OfflineBar'
 import { Icon } from '@/components/icons'
-import { useLive } from '@/lib/data'
+import SignOut from '@/components/SignOut'
+import ThemeToggle from '@/components/ThemeToggle'
+import { clearDownloadHistory, DownloadHistoryItem, subscribeDownloadHistory, useLive } from '@/lib/data'
+import { AdminDashboardDateRange, readAdminDashboardDateRange, setAdminDashboardDateRange, subscribeAdminDashboardDateRange } from '@/lib/dashboardDate'
 import { cx, iconbtn } from '@/lib/tw'
 
 const NAV: Record<string, [string, string, string][]> = {
@@ -18,23 +21,191 @@ const linkCls = (active: boolean) => cx(
   active ? 'bg-accsoft font-semibold text-acc shadow-[inset_3px_0_0_var(--acc)]' : 'text-mute hover:bg-bg',
 )
 
-function OpenReports() {
-  const { data } = useLive(async (sb) => (await sb.from('reports').select('id', { count: 'exact', head: true }).eq('resolved', false)).count ?? 0, ['reports'])
-  return data ? <span className="ml-auto rounded-full bg-bad px-[7px] text-[11px] text-white">{data}</span> : null
+function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
+  const router = useRouter()
+  const root = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const items = NAV[role].filter(([, label]) => label.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6)
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setOpen(true)
+        input.current?.focus()
+      }
+      if (event.key === 'Escape') setOpen(false)
+    }
+    const pointerdown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false)
+    }
+    window.addEventListener('keydown', keydown)
+    document.addEventListener('pointerdown', pointerdown)
+    return () => {
+      window.removeEventListener('keydown', keydown)
+      document.removeEventListener('pointerdown', pointerdown)
+    }
+  }, [])
+
+  function visit(href: string) {
+    router.push(href)
+    setQuery('')
+    setOpen(false)
+    input.current?.blur()
+  }
+
+  return (
+    <div ref={root} className="relative hidden min-w-0 max-w-[320px] flex-1 lg:block">
+      <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mute" />
+      <input ref={input} value={query} onFocus={() => setOpen(true)} onChange={(event) => { setQuery(event.target.value); setOpen(true) }}
+        onKeyDown={(event) => { if (event.key === 'Enter' && items[0]) { event.preventDefault(); visit(items[0][0]) } }}
+        type="search" role="combobox" aria-label="Search pages" aria-expanded={open} aria-controls="global-search-results" aria-autocomplete="list"
+        placeholder="Search pages..." className="m-0 h-10 w-full rounded-lg border border-line bg-bg py-0 pl-10 pr-16 text-sm outline-none placeholder:text-mute focus:border-acc focus:outline focus:outline-2 focus:outline-acc" />
+      <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-line bg-panel px-1.5 py-0.5 text-[11px] text-mute max-sm:hidden">Ctrl K</kbd>
+      {open ? <div id="global-search-results" role="listbox" className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] max-h-[min(60vh,360px)] overflow-auto rounded-lg border border-line bg-panel p-1.5 shadow-panel">
+        {items.length ? items.map(([href, label, icon]) => (
+          <button key={href} type="button" role="option" aria-selected="false" onClick={() => visit(href)} className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2.5 text-left text-sm text-ink hover:bg-bg">
+            <Icon name={icon} size={17} className="text-mute" />{label}<span className="ml-auto text-xs text-mute">Open</span>
+          </button>
+        )) : <p className="m-0 px-3 py-2 text-sm text-mute">No matching pages</p>}
+      </div> : null}
+    </div>
+  )
 }
 
-export default function Shell({ role, name, sub, company, avatarUrl, children }: { role: 'admin' | 'manager'; name: string; sub?: string; company?: string; avatarUrl?: string; children: ReactNode }) {
+function AdminDateRangePicker({ className }: { className?: string }) {
+  const [range, setRange] = useState<AdminDashboardDateRange>({ start: '', end: '' })
+
+  useEffect(() => {
+    setRange(readAdminDashboardDateRange())
+    return subscribeAdminDashboardDateRange(setRange)
+  }, [])
+
+  function change(field: keyof AdminDashboardDateRange, value: string) {
+    let next = { ...range, [field]: value }
+    if (next.start && next.end && next.start > next.end) {
+      next = field === 'start' ? { ...next, end: next.start } : { ...next, start: next.end }
+    }
+    setRange(next)
+    if (next.start && next.end) setAdminDashboardDateRange(next)
+  }
+
+  function restoreIfIncomplete() {
+    if (!range.start || !range.end) setRange(readAdminDashboardDateRange())
+  }
+
+  return <div className={cx('flex h-10 min-w-0 items-center gap-1 rounded-lg border border-line bg-bg px-1.5 sm:gap-1.5 sm:px-2', className)} aria-label="Dashboard date range">
+    <Icon name="calendar" size={17} className="hidden flex-none text-mute sm:block" />
+    <label className="sr">Start date</label>
+    <input type="date" value={range.start} onChange={(event) => change('start', event.target.value)} onBlur={restoreIfIncomplete} aria-label="Start date" className="m-0 h-8 w-[80px] min-w-0 border-0 bg-transparent p-0 text-[11px] text-ink focus:outline focus:outline-2 focus:outline-acc sm:w-[128px] sm:text-[12px]" />
+    <span className="px-0.5 text-[11px] text-mute">-</span>
+    <label className="sr">End date</label>
+    <input type="date" value={range.end} onChange={(event) => change('end', event.target.value)} onBlur={restoreIfIncomplete} aria-label="End date" className="m-0 h-8 w-[80px] min-w-0 border-0 bg-transparent p-0 text-[11px] text-ink focus:outline focus:outline-2 focus:outline-acc sm:w-[128px] sm:text-[12px]" />
+  </div>
+}
+
+function SystemStatus() {
+  const [online, setOnline] = useState(true)
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    update()
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
+  }, [])
+  return <div className="hidden h-9 items-center gap-2 whitespace-nowrap rounded-lg px-2 text-xs text-mute md:flex" role="status" title={online ? 'Connection online' : 'Connection offline'}>
+    <span className={cx('h-2 w-2 rounded-full', online ? 'bg-acc' : 'bg-bad')} />{online ? 'Online' : 'Offline'}
+  </div>
+}
+
+function CurrentDateTime() {
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    const update = () => setNow(new Date())
+    update()
+    const timer = window.setInterval(update, 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const label = now?.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return <time dateTime={now?.toISOString()} title={label ?? 'Current date and time'} className="hidden whitespace-nowrap text-xs text-mute lg:block">
+    {label ?? 'Current date and time'}
+  </time>
+}
+
+function Notifications({ role, count }: { role: 'admin' | 'manager'; count: number }) {
+  return <Link href={`/${role}/reports`} className="relative grid h-10 w-10 flex-none place-items-center rounded-lg text-ink no-underline hover:bg-bg" aria-label={`${count} report notifications`} title="Notifications">
+    <Icon name="bell" />
+    {count > 0 ? <span className="absolute right-0.5 top-0.5 min-w-[17px] rounded-full bg-bad px-1 text-center text-[10px] leading-[17px] text-white">{count > 99 ? '99+' : count}</span> : null}
+  </Link>
+}
+
+function DownloadsMenu({ userId }: { userId: string }) {
+  const [items, setItems] = useState<DownloadHistoryItem[]>([])
+  const menu = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => subscribeDownloadHistory(userId, setItems), [userId])
+
+  function clear() {
+    clearDownloadHistory(userId)
+    setItems([])
+    if (menu.current) menu.current.open = false
+  }
+
+  return <details ref={menu} className="group relative flex-none">
+    <summary aria-label={`${items.length} downloads`} title="Downloads" className="relative grid h-10 w-10 cursor-pointer list-none place-items-center rounded-lg text-ink hover:bg-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-acc [&::-webkit-details-marker]:hidden">
+      <Icon name="download" />
+      {items.length ? <span className="absolute right-0.5 top-0.5 min-w-[17px] rounded-full bg-acc px-1 text-center text-[10px] leading-[17px] text-white">{items.length > 99 ? '99+' : items.length}</span> : null}
+    </summary>
+    <div className="absolute right-0 top-[calc(100%+8px)] z-[70] w-[min(320px,calc(100vw-24px))] overflow-hidden rounded-lg border border-line bg-panel shadow-panel">
+      <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
+        <b className="text-sm">Downloads</b>
+        {items.length ? <button type="button" onClick={clear} className="cursor-pointer border-0 bg-transparent p-1 text-xs font-medium text-mute hover:text-ink">Clear history</button> : null}
+      </div>
+      {items.length ? <ul className="m-0 max-h-[min(60vh,360px)] list-none overflow-y-auto p-1.5">
+        {items.map((item) => <li key={item.id} className="flex items-start gap-2.5 rounded-md px-2 py-2 hover:bg-bg">
+          <Icon name="download" size={16} className="mt-0.5 flex-none text-mute" />
+          <span className="min-w-0 flex-1"><b className="block break-all text-[13px] font-medium">{item.name}</b><time className="block text-[11px] text-mute">{new Date(item.downloadedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</time></span>
+        </li>)}
+      </ul> : <p className="m-0 px-3 py-4 text-sm text-mute">No Stockroom downloads yet.</p>}
+    </div>
+  </details>
+}
+
+function ProfileMenu({ role, name, avatarUrl }: { role: 'admin' | 'manager'; name: string; avatarUrl?: string }) {
+  const label = role === 'admin' ? 'Administrator' : 'Store manager'
+  return <details className="group relative flex-none">
+    <summary aria-label={`${name}, ${label} account menu`} className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-1.5 text-ink hover:bg-bg [&::-webkit-details-marker]:hidden sm:px-2">
+      {avatarUrl ? <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" /> : <span className="grid h-8 w-8 place-items-center rounded-full bg-accsoft text-acc"><Icon name="user" size={18} /></span>}
+      <span className="hidden max-w-32 text-left sm:block"><b className="block truncate text-xs leading-4">{name}</b><span className="block text-[11px] leading-4 text-mute">{label}</span></span>
+      <Icon name="chevron" size={15} className="hidden rotate-90 text-mute sm:block" />
+    </summary>
+    <div className="absolute right-0 top-[calc(100%+8px)] z-[70] w-56 rounded-lg border border-line bg-panel p-1.5 shadow-panel">
+      <div className="border-b border-line px-2.5 py-2"><b className="block truncate text-sm">{name}</b><span className="text-xs text-mute">{label}</span></div>
+      <Link href={`/${role}/settings/profile`} className="block rounded-md px-2.5 py-2 text-sm text-ink no-underline hover:bg-bg">Profile</Link>
+      <Link href={`/${role}/settings`} className="block rounded-md px-2.5 py-2 text-sm text-ink no-underline hover:bg-bg">Settings</Link>
+      <div className="border-t border-line px-2.5 pt-2"><SignOut /></div>
+    </div>
+  </details>
+}
+
+export default function Shell({ role, name, userId, sub, company, avatarUrl, children }: { role: 'admin' | 'manager'; name: string; userId: string; sub?: string; company?: string; avatarUrl?: string; children: ReactNode }) {
   const path = usePathname()
   const [open, setOpen] = useState(false) // side bar on small screens
   const on = (h: string) => (h === '/' + role ? path === h : path.startsWith(h))
-  const profile = `/${role}/settings/profile`
-  const [showCompany, setShowCompany] = useState(true) // Appearance > show the company name in the side bar
+  const [showCompany, setShowCompany] = useState(true) // Appearance > show the company name in the navigation bar
+  const { data } = useLive(async (sb) => {
+    const { count, error } = await sb.from('reports').select('id', { count: 'exact', head: true }).eq('resolved', role === 'admin' ? false : true)
+    if (error) throw new Error(error.message)
+    return count ?? 0
+  }, ['reports'], `nav-reports-${role}`)
+  const reportCount = data ?? 0
 
   useEffect(() => {
-    const read = () => { try { setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1') } catch {} }
-    read()
-    window.addEventListener('stockroom-appearance', read)
-    return () => window.removeEventListener('stockroom-appearance', read)
+    setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1')
+    window.addEventListener('stockroom-appearance', () => setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1'))
+    return () => window.removeEventListener('stockroom-appearance', () => setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1'))
   }, [])
 
   useEffect(() => { setOpen(false) }, [path]) // close after choosing a tab
@@ -56,23 +227,14 @@ export default function Shell({ role, name, sub, company, avatarUrl, children }:
 
   return (
     <div className="min-h-dvh lg:flex">
-      {/* top bar: phones and tablets */}
-      <header className="sticky top-0 z-30 flex items-center gap-2.5 border-b border-line bg-panel pb-2 pl-[calc(12px_+_env(safe-area-inset-left,0px))] pr-[calc(12px_+_env(safe-area-inset-right,0px))] pt-[calc(8px_+_env(safe-area-inset-top,0px))] lg:hidden">
-        <button className={iconbtn} aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-        </button>
-        <img src="/logo-icon.svg" alt="" width={28} height={28} />
-        <span className="font-head text-[19px] font-semibold">Stockroom</span>
-      </header>
-
       {/* dark area behind the open side bar */}
       <div onClick={() => setOpen(false)} aria-hidden="true"
         className={cx('fixed inset-0 z-40 bg-black/50 transition-opacity duration-200 lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
 
       <aside id="sidebar" aria-label="Main menu"
         className={cx(
-          'fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(300px,86vw)] flex-col gap-1 overflow-y-auto border-r border-line bg-panel pl-[calc(12px_+_env(safe-area-inset-left,0px))] pr-3 pt-[calc(16px_+_env(safe-area-inset-top,0px))] pb-[calc(16px_+_env(safe-area-inset-bottom,0px))] shadow-panel transition-[transform,visibility] duration-200 ease-out',
-          'lg:sticky lg:top-0 lg:z-auto lg:w-[230px] lg:flex-none lg:visible lg:translate-x-0 lg:pb-5 lg:pl-3 lg:pt-5 lg:shadow-none lg:transition-none',
+          'fixed inset-y-0 left-0 z-[60] flex h-dvh w-[min(300px,86vw)] flex-col gap-1 overflow-y-auto border-r border-line bg-panel pl-[calc(12px_+_env(safe-area-inset-left,0px))] pr-3 pt-[calc(16px_+_env(safe-area-inset-top,0px))] pb-[calc(16px_+_env(safe-area-inset-bottom,0px))] shadow-panel transition-[transform,visibility] duration-200 ease-out',
+          'lg:sticky lg:inset-y-auto lg:top-0 lg:bottom-auto lg:z-auto lg:h-dvh lg:w-[230px] lg:flex-none lg:visible lg:translate-x-0 lg:pb-5 lg:pl-3 lg:pt-5 lg:shadow-none lg:transition-none',
           open ? 'visible translate-x-0' : 'invisible -translate-x-[105%]',
         )}>
         <div className="flex items-center gap-2.5 px-2 pb-4 font-head text-[21px] font-semibold">
@@ -82,31 +244,46 @@ export default function Shell({ role, name, sub, company, avatarUrl, children }:
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
         </div>
-        {company && showCompany ? <div className="-mt-2 mb-3 truncate px-2 text-[13px] font-semibold text-mute" title={company}>{company}</div> : null}
         <nav className="flex flex-col gap-0.5">
           {NAV[role].map(([h, l, ic]) => (
             <Link key={h} href={h} className={linkCls(on(h))} aria-current={on(h) ? 'page' : undefined}>
-              <Icon name={ic} />{l}{role === 'admin' && h === '/admin/reports' ? <OpenReports /> : null}
+              <Icon name={ic} />{l}{role === 'admin' && h === '/admin/reports' && reportCount > 0 ? <span className="ml-auto rounded-full bg-bad px-[7px] text-[11px] text-white">{reportCount}</span> : null}
             </Link>
           ))}
         </nav>
-        <Link href={profile} aria-current={path === profile ? 'page' : undefined} aria-label={`${name}, account and profile`}
-          className={cx('mt-auto flex items-center gap-3 rounded-2xl border p-3 no-underline transition-colors hover:bg-accsoft', path === profile ? 'border-acc bg-accsoft' : 'border-line')}>
-          {avatarUrl
-            ? <img src={avatarUrl} alt="" className="h-11 w-11 flex-none rounded-full object-cover" />
-            : <span className="grid h-11 w-11 flex-none place-items-center rounded-full bg-accsoft text-acc"><Icon name="user" size={24} /></span>}
-          <span className="min-w-0 flex-1">
-            <b className="block truncate text-[15px]">{name}</b>
-            <span className="block truncate text-[13px] text-mute">{role === 'admin' ? 'Admin account' : 'Store manager' + (sub ? ' · ' + sub : '')}</span>
-          </span>
-          <Icon name="chevron" size={18} className="flex-none text-mute" />
+        <Link href={`/${role}/settings/help`} aria-current={path === `/${role}/settings/help` ? 'page' : undefined}
+          className={cx(linkCls(path === `/${role}/settings/help`), 'mt-auto')}>
+          <Icon name="help" />Help &amp; Support<Icon name="chevron" size={18} className="ml-auto text-mute" />
         </Link>
       </aside>
 
-      <main className="mx-auto w-full min-w-0 max-w-[1200px] flex-1 px-3 pb-9 pt-3.5 min-[1500px]:max-w-[1360px] sm:px-[18px] sm:pt-[18px] lg:px-7 lg:pb-12 lg:pt-6 [&>*]:animate-fadeup">
+      <div className="min-w-0 flex-1">
+      <header className="sticky top-0 z-50 w-full border-b border-line bg-panel/95 shadow-[0_1px_3px_rgba(15,42,61,0.06)] backdrop-blur">
+        <div className="flex min-h-16 w-full flex-wrap items-center gap-2 px-2.5 py-2 sm:gap-3 sm:px-4 lg:flex-nowrap lg:px-6 lg:py-0">
+          <button className={cx(iconbtn, 'lg:hidden')} aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+          {role === 'admin' ? <AdminDateRangePicker className="order-last basis-full justify-center min-[380px]:order-none min-[380px]:basis-auto min-[380px]:flex-1 lg:order-none lg:basis-auto lg:flex-none" /> : null}
+          <GlobalSearch role={role} />
+          <CurrentDateTime />
+          <div className="ml-auto flex flex-none items-center gap-0.5 sm:gap-1.5">
+            <SystemStatus />
+            <Notifications role={role} count={reportCount} />
+            <DownloadsMenu userId={userId} />
+            <ThemeToggle compact />
+            <ProfileMenu role={role} name={name} avatarUrl={avatarUrl} />
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto w-full min-w-0 max-w-[1200px] px-3 pb-9 pt-3.5 min-[1500px]:max-w-[1360px] sm:px-[18px] sm:pt-[18px] lg:px-7 lg:pb-12 lg:pt-6 [&>*]:animate-fadeup">
+        {path === `/${role}` ? <section className="mb-5 rounded-lg border border-line bg-accsoft px-4 py-3.5 sm:px-5">
+          <p className="mb-0.5 mt-0 text-xs font-semibold text-mute">{showCompany && company ? `${company} · ` : ''}{role === 'admin' ? 'Administrator' : sub || 'Store manager'}</p>
+          <p className="m-0 font-head text-xl font-semibold sm:text-2xl">Welcome back, {name}</p>
+        </section> : null}
         {role === 'manager' ? <OfflineBar /> : null}
         {children}
       </main>
+      </div>
       <ToastHost />
     </div>
   )

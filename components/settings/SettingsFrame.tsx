@@ -7,7 +7,7 @@ import { cx } from '@/lib/tw'
 
 export type Role = 'admin' | 'manager'
 
-// [address, label, icon]. Account & Profile is not listed: it opens from the profile at the bottom of the side bar.
+// [address, label, icon]. Account & Profile is opened from the navbar profile menu.
 export const MENU: Record<Role, [string, string, string][]> = {
   admin: [
     ['general', 'General Settings', 'sliders'], ['users', 'User Management', 'users'], ['roles', 'Roles & Permissions', 'shield'],

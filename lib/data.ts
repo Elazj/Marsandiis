@@ -91,10 +91,47 @@ export async function loadSheet(sb: SupabaseClient, id: string) {
 export const csv = (rows: (string | number)[][]) =>
   '\ufeff' + rows.map((r) => r.map((c) => { let v = String(c); if (typeof c === 'string' && /^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"' }).join(',')).join('\n')
 
+export type DownloadHistoryItem = { id: string; name: string; downloadedAt: string }
+export const DOWNLOAD_EVENT = 'stockroom-download'
+export const downloadHistoryKey = (userId: string) => `stockroom-downloads:${userId}`
+
+export function readDownloadHistory(userId: string): DownloadHistoryItem[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(downloadHistoryKey(userId)) ?? '[]')
+    return Array.isArray(stored) ? stored.filter((item) => item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.downloadedAt === 'string') : []
+  } catch { return [] }
+}
+
+export function clearDownloadHistory(userId: string) {
+  try { localStorage.removeItem(downloadHistoryKey(userId)) } catch {}
+}
+
+export function subscribeDownloadHistory(userId: string, onChange: (items: DownloadHistoryItem[]) => void) {
+  onChange(readDownloadHistory(userId))
+  const downloaded = (event: Event) => {
+    const name = (event as CustomEvent<string>).detail
+    if (!name) return
+    const item = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name, downloadedAt: new Date().toISOString() }
+    const items = [item, ...readDownloadHistory(userId)]
+    try { localStorage.setItem(downloadHistoryKey(userId), JSON.stringify(items)) } catch {}
+    onChange(items)
+  }
+  const stored = (event: StorageEvent) => {
+    if (event.key === downloadHistoryKey(userId)) onChange(readDownloadHistory(userId))
+  }
+  window.addEventListener(DOWNLOAD_EVENT, downloaded)
+  window.addEventListener('storage', stored)
+  return () => {
+    window.removeEventListener(DOWNLOAD_EVENT, downloaded)
+    window.removeEventListener('storage', stored)
+  }
+}
+
 export function download(name: string, text: string) {
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
   a.download = name; a.click()
+  window.dispatchEvent(new CustomEvent(DOWNLOAD_EVENT, { detail: name }))
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 

@@ -97,6 +97,7 @@ export default function Login() {
           <button className={tab(signup)} onClick={() => { setMode('signup'); setMsg(''); setShowPassword(false); setShowConfirmPassword(false) }}>Sign up</button>
         </div>
         {signup && <p className="-mt-1 mb-3 text-[13px] text-mute">Create the admin account for your company. Each company has one admin, who then creates the store manager accounts from the Team page.</p>}
+        <form onSubmit={(event) => { event.preventDefault(); void submit() }}>
         {signup && <label>Full name<input value={f.name} onChange={set('name')} placeholder="Enter your full name" autoComplete="name" /></label>}
         {signup && <label>Company / business name
           <input value={f.company} onChange={set('company')} placeholder="Company / business name" maxLength={80} autoComplete="organization"
@@ -130,7 +131,8 @@ export default function Login() {
           </label>
         </>}
         <p role="alert" className={cx(errBase, good ? 'text-acc' : 'text-bad')}>{msg}</p>
-        <button className={btn('primary', 'md', true)} disabled={busy} onClick={submit}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>
+        <button type="submit" className={btn('primary', 'md', true)} disabled={busy}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Log in'}</button>
+        </form>
         {!signup && <>
           <div className="my-3 text-center text-[13px] text-mute">or</div>
           <button className={btn('ghost', 'md', true)} onClick={google}>Continue with Google</button>
