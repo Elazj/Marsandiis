@@ -50,7 +50,7 @@ export default function Appearance() {
     </div>
     <div className="mt-2">
       <Row title="Compact tables" desc="Smaller row height, so more rows fit on screen."><Switch on={compact} onChange={flipCompact} label="Compact tables" /></Row>
-      <Row title="Show company name in the side bar" desc="Your company name under the Stockroom logo."><Switch on={company} onChange={flipCompany} label="Show company name in the side bar" /></Row>
+      <Row title="Show company name in the welcome banner" desc="Display your company name above the dashboard greeting."><Switch on={company} onChange={flipCompany} label="Show company name in the welcome banner" /></Row>
     </div>
   </>)
 }

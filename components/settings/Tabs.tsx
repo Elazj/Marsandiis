@@ -11,6 +11,7 @@ import Appearance from './Appearance'
 import Backup from './Backup'
 import Activity from './Activity'
 import About from './About'
+import HelpSupport from './HelpSupport'
 import TeamManager from '@/components/TeamManager'
 
 // Picks the settings page from the address (/admin/settings/general, /manager/settings/appearance ...).
@@ -22,6 +23,7 @@ export default function SettingsTab({ role }: { role: Role }) {
   if (tab === 'appearance') return <Appearance />
   if (tab === 'activity') return <Activity role={role} />
   if (tab === 'about') return <About />
+  if (tab === 'help') return <HelpSupport role={role} />
   if (admin && tab === 'general') return <General />
   if (admin && tab === 'users') return <TeamManager embedded />
   if (admin && tab === 'roles') return <Roles />

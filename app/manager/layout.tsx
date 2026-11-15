@@ -16,7 +16,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
   const avatarUrl = p?.avatar_path ? sb.storage.from('avatars').getPublicUrl(p.avatar_path).data.publicUrl : undefined
   return (
     <SettingsProvider value={c?.settings} userId={user?.id ?? ''}>
-    <Shell role="manager" name={p?.full_name ?? 'Manager'} sub={storeName} company={company} avatarUrl={avatarUrl}>
+    <Shell role="manager" name={p?.full_name ?? 'Manager'} userId={user?.id ?? ''} sub={storeName} company={company} avatarUrl={avatarUrl}>
       {p?.store_id ? children : (
         <div className="panel max-w-[460px]">
           <h1>No store yet</h1>

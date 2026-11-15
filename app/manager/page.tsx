@@ -12,7 +12,6 @@ export default function ManagerDashboard() {
     bal: await q(sb.from('supply_balance').select('*')),
     supplies: await q(sb.from('supplies').select('id, sheet_started_at, products(name, unit)')),
     log: await q(sb.from('activity_log').select('id, message, created_at').order('created_at', { ascending: false }).limit(6)),
-    company: ((await q(sb.from('companies').select('name').limit(1))) as any[])[0]?.name ?? '',
   }), ['supplies', 'sheet_rows', 'losses', 'gifts', 'activity_log', 'products'])
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
@@ -23,7 +22,7 @@ export default function ManagerDashboard() {
 
   return (<>
     <div className="hero">
-      <div>{d.company ? <div className="mb-1 text-[13px] font-semibold uppercase tracking-wider opacity-90">{d.company}</div> : null}<h1>My store</h1><p>What is left of each product, updated live as you record entries.</p></div>
+      <div><h1>My store</h1><p>What is left of each product, updated live as you record entries.</p></div>
       <span className="live-pill"><i />Live</span>
     </div>
     <Notices role="manager" />
