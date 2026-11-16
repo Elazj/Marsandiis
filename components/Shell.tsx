@@ -96,13 +96,13 @@ function AdminDateRangePicker({ className }: { className?: string }) {
     if (!range.start || !range.end) setRange(readAdminDashboardDateRange())
   }
 
-  return <div className={cx('flex h-10 min-w-0 items-center gap-1 rounded-lg border border-line bg-bg px-1.5 sm:gap-1.5 sm:px-2', className)} aria-label="Dashboard date range">
+  return <div className={cx('flex h-9 min-w-0 items-center gap-0.5 rounded-lg border border-line bg-bg px-1 sm:h-10 sm:gap-1.5 sm:px-2', className)} aria-label="Dashboard date range">
     <Icon name="calendar" size={17} className="hidden flex-none text-mute sm:block" />
     <label className="sr">Start date</label>
-    <input type="date" value={range.start} onChange={(event) => change('start', event.target.value)} onBlur={restoreIfIncomplete} aria-label="Start date" className="m-0 h-8 w-[80px] min-w-0 border-0 bg-transparent p-0 text-[11px] text-ink focus:outline focus:outline-2 focus:outline-acc sm:w-[128px] sm:text-[12px]" />
-    <span className="px-0.5 text-[11px] text-mute">-</span>
+    <input type="date" value={range.start} onChange={(event) => change('start', event.target.value)} onBlur={restoreIfIncomplete} aria-label="Start date" className="m-0 h-7 w-[68px] min-w-0 flex-1 border-0 bg-transparent p-0 text-[10px] text-ink focus:outline focus:outline-2 focus:outline-acc min-[380px]:w-[80px] sm:h-8 sm:w-[128px] sm:flex-none sm:text-[12px]" />
+    <span className="px-0.5 text-[10px] text-mute sm:text-[11px]">-</span>
     <label className="sr">End date</label>
-    <input type="date" value={range.end} onChange={(event) => change('end', event.target.value)} onBlur={restoreIfIncomplete} aria-label="End date" className="m-0 h-8 w-[80px] min-w-0 border-0 bg-transparent p-0 text-[11px] text-ink focus:outline focus:outline-2 focus:outline-acc sm:w-[128px] sm:text-[12px]" />
+    <input type="date" value={range.end} onChange={(event) => change('end', event.target.value)} onBlur={restoreIfIncomplete} aria-label="End date" className="m-0 h-7 w-[68px] min-w-0 flex-1 border-0 bg-transparent p-0 text-[10px] text-ink focus:outline focus:outline-2 focus:outline-acc min-[380px]:w-[80px] sm:h-8 sm:w-[128px] sm:flex-none sm:text-[12px]" />
   </div>
 }
 
@@ -259,11 +259,11 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, chi
 
       <div className="min-w-0 flex-1">
       <header className="sticky top-0 z-50 w-full border-b border-line bg-panel/95 shadow-[0_1px_3px_rgba(15,42,61,0.06)] backdrop-blur">
-        <div className="flex min-h-16 w-full flex-wrap items-center gap-2 px-2.5 py-2 sm:gap-3 sm:px-4 lg:flex-nowrap lg:px-6 lg:py-0">
+        <div className="flex min-h-16 w-full flex-nowrap items-center gap-1 px-2 py-2 sm:gap-3 sm:px-4 lg:px-6 lg:py-0">
           <button className={cx(iconbtn, 'lg:hidden')} aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
-          {role === 'admin' ? <AdminDateRangePicker className="order-last basis-full justify-center min-[380px]:order-none min-[380px]:basis-auto min-[380px]:flex-1 lg:order-none lg:basis-auto lg:flex-none" /> : null}
+          {role === 'admin' ? <AdminDateRangePicker className="min-w-0 flex-1 lg:flex-none" /> : null}
           <GlobalSearch role={role} />
           <CurrentDateTime />
           <div className="ml-auto flex flex-none items-center gap-0.5 sm:gap-1.5">
