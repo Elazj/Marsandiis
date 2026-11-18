@@ -342,7 +342,7 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, fir
           </button>
           <CurrentDateTime />
           <GlobalSearch role={role} />
-          <div className="ml-auto flex flex-none items-center gap-0.5 sm:gap-1.5">
+          <div className="ml-auto flex min-w-0 items-center gap-0.5 sm:gap-1.5">
             {role === 'admin' ? <>
               <AdminDateRangePicker className="min-w-0 flex-1 lg:hidden" />
               <AdminDateRangePicker className="hidden flex-none lg:flex" />

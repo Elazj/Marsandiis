@@ -617,16 +617,6 @@
     @apply font-head text-[19px] font-semibold;
   }
 
-  aside {
-    @apply invisible fixed bottom-0 left-0 top-0 z-[50] h-screen h-[100dvh] w-[min(300px,86vw)] px-3 py-[calc(16px+env(safe-area-inset-top,0px))] pb-[calc(16px+env(safe-area-inset-bottom,0px))] pl-[calc(12px+env(safe-area-inset-left,0px))] shadow-panel transition-[transform,visibility] delay-[250ms] duration-[250ms] ease-in-out;
-    @apply -translate-x-[105%];
-  }
-
-  aside.open {
-    @apply visible;
-    @apply transform-none delay-0;
-  }
-
   .closebtn {
     @apply ml-auto inline-grid;
   }
