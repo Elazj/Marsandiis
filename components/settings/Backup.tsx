@@ -38,7 +38,7 @@ function RestoreBody({ file, backup, onClose }: { file: string; backup: any; onC
     <p className="mt-0">Restore <b>{file}</b>, made {backup.createdAt ? new Date(backup.createdAt).toLocaleString() : 'at an unknown time'}. It contains:</p>
     <ul className="mt-0 pl-5 text-[14px]">{TABLES.map((t) => <li key={t}>{(backup[t] ?? []).length} {LABELS[t]}</li>)}</ul>
     <p className="mute">Everything your company has now is replaced by this backup. Manager accounts are kept. This cannot be undone, so download a backup of the current data first if you might need it.</p>
-    <label>Type RESTORE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
+    <label>Type RESTORE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="Type RESTORE" /></label>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn danger" disabled={busy} onClick={go}>{busy ? 'Restoring…' : 'Restore backup'}</button></div>
   </>)
@@ -68,7 +68,7 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     <label className="flex items-center gap-2">
       <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all store manager accounts of this company
     </label>
-    <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
+    <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="Type RESET" /></label>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn danger" disabled={busy} onClick={go}>{busy ? 'Resetting…' : 'Reset everything'}</button></div>
   </>)

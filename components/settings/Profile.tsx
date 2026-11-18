@@ -23,8 +23,8 @@ function PasswordBody({ onClose }: { onClose: () => void }) {
     toast('Password updated'); onClose()
   }
   return (<>
-    <label>New password<input type="password" value={a} onChange={(e) => setA(e.target.value)} autoComplete="new-password" /></label>
-    <label>Confirm new password<input type="password" value={b} onChange={(e) => setB(e.target.value)} autoComplete="new-password" /></label>
+    <label>New password<input type="password" value={a} onChange={(e) => setA(e.target.value)} autoComplete="new-password" placeholder="Enter a new password" /></label>
+    <label>Confirm new password<input type="password" value={b} onChange={(e) => setB(e.target.value)} autoComplete="new-password" placeholder="Re-enter the new password" /></label>
     <p className="err" role="alert">{m}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" disabled={busy} onClick={save}>Update password</button></div>
   </>)
@@ -45,7 +45,7 @@ function DeleteBody({ onClose }: { onClose: () => void }) {
   }
   return (<>
     <p className="mute mt-0">This permanently deletes your admin account, your company and everything in it: stores, products, supplies, sheet entries, gifts, reports and activity. It also deletes every store manager account you created, so their logins stop working. It cannot be undone. Afterwards you can sign up again, even with the same company name.</p>
-    <label>Type DELETE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
+    <label>Type DELETE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="Type DELETE" /></label>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn danger" disabled={busy} onClick={go}>{busy ? 'Deleting…' : 'Delete my account'}</button></div>
   </>)
@@ -208,9 +208,9 @@ export default function Profile({ role }: { role: Role }) {
       </div>
     </div>
     <div className="grid gap-4 sm:grid-cols-2">
-      <label className="m-0">Full name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
+      <label className="m-0">Full name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Enter your full name" /></label>
       {role === 'admin'
-        ? <label className="m-0">Sign-in email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
+        ? <label className="m-0">Sign-in email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
         : <label className="m-0">Email<input value={me.email} readOnly /></label>}
       <label className="m-0">Company<input value={me.company} readOnly /></label>
       {role === 'manager' ? <label className="m-0">Store<input value={me.store || '-'} readOnly /></label> : null}

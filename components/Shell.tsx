@@ -2,13 +2,16 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ToastHost } from '@/components/ui'
+import { Modal, ToastHost } from '@/components/ui'
+import { AdminSheet } from '@/components/Sheet'
 import OfflineBar from '@/components/OfflineBar'
 import { Icon } from '@/components/icons'
 import SignOut from '@/components/SignOut'
 import ThemeToggle from '@/components/ThemeToggle'
 import { clearDownloadHistory, DownloadHistoryItem, subscribeDownloadHistory, useLive } from '@/lib/data'
 import { AdminDashboardDateRange, readAdminDashboardDateRange, setAdminDashboardDateRange, subscribeAdminDashboardDateRange } from '@/lib/dashboardDate'
+import { searchSupplyEntries, SupplySearchResult } from '@/lib/supplySearch'
+import { supabaseBrowser } from '@/lib/supabase/client'
 import { cx, iconbtn } from '@/lib/tw'
 
 const NAV: Record<string, [string, string, string][]> = {
@@ -27,7 +30,43 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
   const input = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const [supplyResults, setSupplyResults] = useState<SupplySearchResult[]>([])
+  const [supplyBusy, setSupplyBusy] = useState(false)
+  const [supplyError, setSupplyError] = useState('')
+  const [selectedSupply, setSelectedSupply] = useState<SupplySearchResult | null>(null)
   const items = NAV[role].filter(([, label]) => label.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6)
+
+  useEffect(() => {
+    const term = query.trim()
+    if (role !== 'admin' || !term) {
+      setSupplyResults([])
+      setSupplyBusy(false)
+      setSupplyError('')
+      return
+    }
+
+    let stale = false
+    setSupplyResults([])
+    setSupplyBusy(true)
+    setSupplyError('')
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await searchSupplyEntries(term, 6)
+        if (!stale) {
+          setSupplyResults(results)
+          setSupplyError('')
+        }
+      } catch (error) {
+        if (!stale) {
+          setSupplyResults([])
+          setSupplyError(error instanceof Error ? error.message : 'Supply search failed')
+        }
+      } finally {
+        if (!stale) setSupplyBusy(false)
+      }
+    }, 300)
+    return () => { stale = true; window.clearTimeout(timer) }
+  }, [query, role])
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -52,26 +91,62 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
   function visit(href: string) {
     router.push(href)
     setQuery('')
+    setSupplyResults([])
+    setOpen(false)
+    input.current?.blur()
+  }
+
+  function openSupply(supply: SupplySearchResult) {
+    setSelectedSupply(supply)
+    setQuery('')
+    setSupplyResults([])
     setOpen(false)
     input.current?.blur()
   }
 
   return (
-    <div ref={root} className="relative hidden min-w-0 max-w-[320px] flex-1 lg:block">
+    <>
+    <div ref={root} className="relative mx-auto hidden min-w-0 max-w-[480px] flex-1 lg:block">
       <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mute" />
       <input ref={input} value={query} onFocus={() => setOpen(true)} onChange={(event) => { setQuery(event.target.value); setOpen(true) }}
-        onKeyDown={(event) => { if (event.key === 'Enter' && items[0]) { event.preventDefault(); visit(items[0][0]) } }}
-        type="search" role="combobox" aria-label="Search pages" aria-expanded={open} aria-controls="global-search-results" aria-autocomplete="list"
-        placeholder="Search pages..." className="m-0 h-10 w-full rounded-lg border border-line bg-bg py-0 pl-10 pr-16 text-sm outline-none placeholder:text-mute focus:border-acc focus:outline focus:outline-2 focus:outline-acc" />
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            if (items[0]) { event.preventDefault(); visit(items[0][0]) }
+            else if (supplyResults[0]) { event.preventDefault(); openSupply(supplyResults[0]) }
+          }
+        }}
+        type="search" role="combobox" aria-label="Search pages or supplies" aria-expanded={open} aria-controls="global-search-results" aria-autocomplete="list"
+        placeholder="Search pages or invoice/sales number..." className="m-0 h-10 w-full rounded-lg border border-line bg-bg py-0 pl-10 pr-16 text-sm outline-none placeholder:text-mute focus:border-acc focus:outline focus:outline-2 focus:outline-acc" />
       <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-line bg-panel px-1.5 py-0.5 text-[11px] text-mute max-sm:hidden">Ctrl K</kbd>
       {open ? <div id="global-search-results" role="listbox" className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] max-h-[min(60vh,360px)] overflow-auto rounded-lg border border-line bg-panel p-1.5 shadow-panel">
-        {items.length ? items.map(([href, label, icon]) => (
+        {items.length ? <>
+          <p className="m-0 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-mute">Pages</p>
+          {items.map(([href, label, icon]) => (
           <button key={href} type="button" role="option" aria-selected="false" onClick={() => visit(href)} className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2.5 text-left text-sm text-ink hover:bg-bg">
             <Icon name={icon} size={17} className="text-mute" />{label}<span className="ml-auto text-xs text-mute">Open</span>
           </button>
-        )) : <p className="m-0 px-3 py-2 text-sm text-mute">No matching pages</p>}
+          ))}
+        </> : null}
+        {role === 'admin' && query.trim() ? <>
+          <p className="m-0 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-mute">Supply entries</p>
+          {supplyResults.map((item) => (
+            <button key={item.id} type="button" role="option" aria-selected="false" onClick={() => openSupply(item)} className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2.5 text-left text-sm text-ink hover:bg-bg">
+              <Icon name="supplies" size={17} className="flex-none text-mute" />
+              <span className="min-w-0 flex-1 truncate"><b>{item.supply_ref}</b><span className="text-mute"> · {item.customer}</span></span>
+              <span className="hidden max-w-28 truncate text-xs text-mute sm:block">{item.supplies?.products?.name}</span>
+            </button>
+          ))}
+          {supplyError ? <p className="m-0 px-2.5 py-2 text-sm text-bad" role="alert">{supplyError}</p> : null}
+          {supplyBusy ? <p className="m-0 px-2.5 py-2 text-sm text-mute" role="status">Searching supply entries…</p> : null}
+          {!supplyError && !supplyBusy && !supplyResults.length ? <p className="m-0 px-2.5 py-2 text-sm text-mute">No matching supply entries</p> : null}
+        </> : null}
+        {!items.length && (role !== 'admin' || !query.trim()) ? <p className="m-0 px-3 py-2 text-sm text-mute">No matching pages</p> : null}
       </div> : null}
     </div>
+    <Modal open={!!selectedSupply} wide title="Supply sheet" onClose={() => setSelectedSupply(null)}>
+      {selectedSupply ? <AdminSheet supplyId={selectedSupply.supply_id} onClose={() => setSelectedSupply(null)} onOpen={(supplyId) => setSelectedSupply({ ...selectedSupply, supply_id: supplyId })} /> : null}
+    </Modal>
+    </>
   )
 }
 
@@ -103,20 +178,6 @@ function AdminDateRangePicker({ className }: { className?: string }) {
     <span className="px-0.5 text-[10px] text-mute sm:text-[11px]">-</span>
     <label className="sr">End date</label>
     <input type="date" value={range.end} onChange={(event) => change('end', event.target.value)} onBlur={restoreIfIncomplete} aria-label="End date" className="m-0 h-7 w-[68px] min-w-0 flex-1 border-0 bg-transparent p-0 text-[10px] text-ink focus:outline focus:outline-2 focus:outline-acc min-[380px]:w-[80px] sm:h-8 sm:w-[128px] sm:flex-none sm:text-[12px]" />
-  </div>
-}
-
-function SystemStatus() {
-  const [online, setOnline] = useState(true)
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine)
-    update()
-    window.addEventListener('online', update)
-    window.addEventListener('offline', update)
-    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
-  }, [])
-  return <div className="hidden h-9 items-center gap-2 whitespace-nowrap rounded-lg px-2 text-xs text-mute md:flex" role="status" title={online ? 'Connection online' : 'Connection offline'}>
-    <span className={cx('h-2 w-2 rounded-full', online ? 'bg-acc' : 'bg-bad')} />{online ? 'Online' : 'Offline'}
   </div>
 }
 
@@ -190,9 +251,10 @@ function ProfileMenu({ role, name, avatarUrl }: { role: 'admin' | 'manager'; nam
   </details>
 }
 
-export default function Shell({ role, name, userId, sub, company, avatarUrl, children }: { role: 'admin' | 'manager'; name: string; userId: string; sub?: string; company?: string; avatarUrl?: string; children: ReactNode }) {
+export default function Shell({ role, name, userId, sub, company, avatarUrl, firstAdminLogin = false, children }: { role: 'admin' | 'manager'; name: string; userId: string; sub?: string; company?: string; avatarUrl?: string; firstAdminLogin?: boolean; children: ReactNode }) {
   const path = usePathname()
   const [open, setOpen] = useState(false) // side bar on small screens
+  const welcomeRecorded = useRef(false)
   const on = (h: string) => (h === '/' + role ? path === h : path.startsWith(h))
   const [showCompany, setShowCompany] = useState(true) // Appearance > show the company name in the navigation bar
   const { data } = useLive(async (sb) => {
@@ -207,6 +269,21 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, chi
     window.addEventListener('stockroom-appearance', () => setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1'))
     return () => window.removeEventListener('stockroom-appearance', () => setShowCompany(localStorage.getItem('stockroom-hide-company') !== '1'))
   }, [])
+
+  useEffect(() => {
+    if (role !== 'admin' || !firstAdminLogin || path !== '/admin' || welcomeRecorded.current) return
+    welcomeRecorded.current = true
+    void (async () => {
+      try {
+        const result = await supabaseBrowser().auth.updateUser({ data: { stockroom_admin_welcome_seen: true } })
+        if (result.error) throw new Error(result.error.message)
+      } catch (error) {
+        welcomeRecorded.current = false
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        window.dispatchEvent(new CustomEvent('toast', { detail: `Could not save welcome status: ${message}` }))
+      }
+    })()
+  }, [firstAdminLogin, path, role])
 
   useEffect(() => { setOpen(false) }, [path]) // close after choosing a tab
 
@@ -263,11 +340,13 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, chi
           <button className={cx(iconbtn, 'lg:hidden')} aria-label="Open menu" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(true)}>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
-          {role === 'admin' ? <AdminDateRangePicker className="min-w-0 flex-1 lg:flex-none" /> : null}
-          <GlobalSearch role={role} />
           <CurrentDateTime />
+          <GlobalSearch role={role} />
           <div className="ml-auto flex flex-none items-center gap-0.5 sm:gap-1.5">
-            <SystemStatus />
+            {role === 'admin' ? <>
+              <AdminDateRangePicker className="min-w-0 flex-1 lg:hidden" />
+              <AdminDateRangePicker className="hidden flex-none lg:flex" />
+            </> : null}
             <Notifications role={role} count={reportCount} />
             <DownloadsMenu userId={userId} />
             <ThemeToggle compact />
@@ -278,7 +357,7 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, chi
       <main className="mx-auto w-full min-w-0 max-w-[1200px] px-3 pb-9 pt-3.5 min-[1500px]:max-w-[1360px] sm:px-[18px] sm:pt-[18px] lg:px-7 lg:pb-12 lg:pt-6 [&>*]:animate-fadeup">
         {path === `/${role}` ? <section className="mb-5 rounded-lg border border-line bg-accsoft px-4 py-3.5 sm:px-5">
           <p className="mb-0.5 mt-0 text-xs font-semibold text-mute">{showCompany && company ? `${company} · ` : ''}{role === 'admin' ? 'Administrator' : sub || 'Store manager'}</p>
-          <p className="m-0 font-head text-xl font-semibold sm:text-2xl">Welcome back, {name}</p>
+          <p className="m-0 font-head text-xl font-semibold sm:text-2xl">{role === 'admin' && firstAdminLogin ? `Welcome onboard, ${name}` : `Welcome back, ${name}`}</p>
         </section> : null}
         {role === 'manager' ? <OfflineBar /> : null}
         {children}

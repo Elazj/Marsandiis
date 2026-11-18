@@ -23,8 +23,8 @@ export default function ManagerReports() {
     <div className="content-grid">
       <div className="panel"><h2>New report</h2>
         <label>Category<select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{['Store issue', 'Job issue', 'Stock problem', 'Other'].map((c) => <option key={c}>{c}</option>)}</select></label>
-        <label>Subject<input value={f.subject} maxLength={120} onChange={(e) => setF({ ...f, subject: e.target.value })} /></label>
-        <label>Message<textarea className="mt-1 block w-full rounded-lg border border-line bg-panel px-[11px] py-[9px] text-ink [font:inherit]" rows={5} maxLength={2000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></label>
+        <label>Subject<input value={f.subject} maxLength={120} onChange={(e) => setF({ ...f, subject: e.target.value })} placeholder="Briefly summarize the issue" /></label>
+        <label>Message<textarea className="mt-1 block w-full rounded-lg border border-line bg-panel px-[11px] py-[9px] text-ink [font:inherit]" rows={5} maxLength={2000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} placeholder="Describe what happened and include any helpful details" /></label>
         <p className="err" role="alert">{msg}</p><button className="btn" onClick={send}>Send to admin</button></div>
       <div className="panel"><h2>Your reports</h2>
         {d.length ? <div className="wrap"><table><thead><tr><th>Sent</th><th>Subject</th><th>Status</th></tr></thead><tbody>

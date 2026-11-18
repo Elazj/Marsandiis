@@ -33,13 +33,13 @@ export default function Inventory() {
     <TabHead title="Inventory Configuration" desc="Rules for products, stock alerts and what store managers can record." />
     <div className="-mt-4">
       <Row title="Low-stock alert level" desc="A product shows as Low when this percent of the quantity assigned to a store, or less, is left.">
-        <div className="flex items-center gap-2"><input className="mt-0 w-24" type="number" min={1} max={90} value={f.lowStockPct} onChange={(e) => setF({ ...f, lowStockPct: e.target.value })} aria-label="Low-stock alert level in percent" /><span className="text-mute">%</span></div>
+        <div className="flex items-center gap-2"><input className="mt-0 w-24" type="number" min={1} max={90} value={f.lowStockPct} onChange={(e) => setF({ ...f, lowStockPct: e.target.value })} aria-label="Low-stock alert level in percent" placeholder="e.g., 20" /><span className="text-mute">%</span></div>
       </Row>
       <Row title="Default unit" desc="Pre-filled when you add a product.">
-        <input className="mt-0 w-full sm:w-40" value={f.defaultUnit} maxLength={20} onChange={(e) => setF({ ...f, defaultUnit: e.target.value })} aria-label="Default unit" />
+        <input className="mt-0 w-full sm:w-40" value={f.defaultUnit} maxLength={20} onChange={(e) => setF({ ...f, defaultUnit: e.target.value })} aria-label="Default unit" placeholder="e.g., pieces" />
       </Row>
       <Row title="Forecast history" desc="How many past days the stock-out forecast learns from (28 to 90).">
-        <div className="flex items-center gap-2"><input className="mt-0 w-24" type="number" min={28} max={90} value={f.forecastDays} onChange={(e) => setF({ ...f, forecastDays: e.target.value })} aria-label="Forecast history in days" /><span className="text-mute">days</span></div>
+        <div className="flex items-center gap-2"><input className="mt-0 w-24" type="number" min={28} max={90} value={f.forecastDays} onChange={(e) => setF({ ...f, forecastDays: e.target.value })} aria-label="Forecast history in days" placeholder="e.g., 56" /><span className="text-mute">days</span></div>
       </Row>
       <Row title="Require date arrived on products" desc="When off, a product saved without an arrival date gets today's date."><Switch on={f.requireArrival} onChange={(v) => setF({ ...f, requireArrival: v })} label="Require date arrived" /></Row>
       <Row title="Let managers record gifts" desc="Shows the gift panel on each store manager's sheet."><Switch on={f.allowGifts} onChange={(v) => setF({ ...f, allowGifts: v })} label="Let managers record gifts" /></Row>

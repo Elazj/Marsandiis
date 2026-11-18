@@ -52,19 +52,24 @@ export async function remove(table: string, id: string) {
 }
 
 // Loads data now and again whenever anyone changes the listed tables (live updates).
-export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[], cacheKey?: string) {
+export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[], cacheKey?: string, refreshMs = 0) {
   const path = usePathname()
   const [data, setData] = useState<T | null>(null)
   const [err, setErr] = useState('')
   const [fromCache, setFromCache] = useState(false)
   const ref = useRef(load); ref.current = load
+  const requestId = useRef(0)
   const key = tables.join(',')
   const storeKey = cacheKey ?? liveCacheKey(path, tables)
   const reload = useCallback(async () => {
+    const id = ++requestId.current
     try {
       const hit = await cacheLive(storeKey, () => ref.current(supabaseBrowser()))
+      if (id !== requestId.current) return
       setData(hit.data); setFromCache(hit.fromCache); setErr('')
-    } catch (e: any) { setErr(friendly(e.message ?? 'Could not load data')) }
+    } catch (e: any) {
+      if (id === requestId.current) setErr(friendly(e?.message ?? 'Could not load data'))
+    }
   }, [storeKey])
   useEffect(() => {
     reload()
@@ -72,8 +77,22 @@ export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: str
     const ch = sb.channel('live-' + storeKey + '-' + Math.random().toString(36).slice(2))
     key.split(',').forEach((table) => ch.on('postgres_changes', { event: '*', schema: 'public', table }, () => { clearTimeout(t); t = setTimeout(reload, 200) }))
     ch.subscribe()
-    return () => { clearTimeout(t); sb.removeChannel(ch) }
-  }, [key, storeKey, reload])
+    const poll = refreshMs > 0 ? window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) void reload()
+    }, refreshMs) : undefined
+    const online = () => { void reload() }
+    const visible = () => { if (document.visibilityState === 'visible') void reload() }
+    window.addEventListener('online', online)
+    document.addEventListener('visibilitychange', visible)
+    return () => {
+      clearTimeout(t)
+      if (poll !== undefined) window.clearInterval(poll)
+      window.removeEventListener('online', online)
+      document.removeEventListener('visibilitychange', visible)
+      requestId.current++
+      sb.removeChannel(ch)
+    }
+  }, [key, refreshMs, storeKey, reload])
   return { data, err, reload, fromCache }
 }
 

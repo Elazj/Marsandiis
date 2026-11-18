@@ -12,5 +12,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const c = Array.isArray(co) ? co[0] : co
   const company: string = c?.name ?? ''
   const avatarUrl = p?.avatar_path ? sb.storage.from('avatars').getPublicUrl(p.avatar_path).data.publicUrl : undefined
-  return <SettingsProvider value={c?.settings} userId={user?.id ?? ''}><Shell role="admin" name={p?.full_name ?? 'Admin'} userId={user?.id ?? ''} company={company} avatarUrl={avatarUrl}>{children}</Shell></SettingsProvider>
+  const firstAdminLogin = user?.user_metadata?.stockroom_admin_welcome_seen === false
+  return <SettingsProvider value={c?.settings} userId={user?.id ?? ''}><Shell role="admin" name={p?.full_name ?? 'Admin'} userId={user?.id ?? ''} company={company} avatarUrl={avatarUrl} firstAdminLogin={firstAdminLogin}>{children}</Shell></SettingsProvider>
 }

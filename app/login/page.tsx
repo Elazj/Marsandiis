@@ -63,7 +63,7 @@ export default function Login() {
       if (await companyTaken(company)) return bad(COMPANY_EXISTS)
       const { error } = await sb.auth.signUp({
         email, password: f.pw,
-        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: 'admin', company_name: company } },
+        options: { emailRedirectTo: location.origin + '/auth/callback', data: { full_name: f.name.trim(), role: 'admin', company_name: company, stockroom_admin_welcome_seen: false } },
       })
       if (error) {
         // The database refuses a second company with the same name, even if two people try at the same moment.
