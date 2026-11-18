@@ -21,7 +21,11 @@ export default function AdminDashboard() {
     const until = untilDate.toISOString()
     const [bal, products, stores, open, reps, log, rows, losses, gifts] = await Promise.all([
       q(sb.from('supply_balance').select('*')), q(sb.from('products').select('*')), q(sb.from('stores').select('*')),
-      sb.from('reports').select('id', { count: 'exact', head: true }).eq('resolved', false).then((r: any) => r.count ?? 0),
+      (async () => {
+        const { count, error } = await sb.from('reports').select('id', { count: 'exact', head: true }).eq('resolved', false).gte('created_at', from).lt('created_at', until)
+        if (error) throw new Error(error.message)
+        return count ?? 0
+      })(),
       q(sb.from('reports').select('id, subject, resolved, created_at, profiles(full_name)').gte('created_at', from).lt('created_at', until).order('created_at', { ascending: false }).limit(4)),
       q(sb.from('activity_log').select('id, message, created_at, profiles(full_name)').gte('created_at', from).lt('created_at', until).order('created_at', { ascending: false }).limit(10)),
       q(sb.from('sheet_rows').select('quantity, created_at, supplies(products(name))').gte('created_at', from).lt('created_at', until)),
@@ -29,7 +33,7 @@ export default function AdminDashboard() {
       q(sb.from('gifts').select('quantity, created_at').gte('created_at', from).lt('created_at', until)),
     ])
     return { bal, products, stores, open, reps, log, rows, losses, gifts }
-  }, ['supplies', 'sheet_rows', 'losses', 'gifts', 'reports', 'activity_log', 'products', 'stores'], `admin-dashboard-${range.start}-${range.end}`)
+  }, ['supplies', 'sheet_rows', 'losses', 'gifts', 'reports', 'activity_log', 'products', 'stores'], `admin-dashboard-${range.start}-${range.end}`, 5_000)
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
 
@@ -75,10 +79,10 @@ export default function AdminDashboard() {
     {!d.stores.length || !B.length ? <div className="panel mb-4"><b>Get started.</b> <span className="mute">Add a store under Stores, create a product under Products, then add it to a store under Supplies.</span></div> : null}
     <Notices role="admin" />
     <div className="kpis">
-      <Kpi icon="store" label="Active stores" value={d.stores.filter((s: any) => s.active).length} />
-      <Kpi icon="box" label="Products" value={P.length} />
-      <Kpi icon="clock" label="Not yet in a store" value={notInStore} />
-      <Kpi icon="layers" label="Units in stores" value={sum(B, (b) => Number(b.assigned))} />
+      <Kpi icon="store" label="Active stores (current)" value={d.stores.filter((s: any) => s.active).length} />
+      <Kpi icon="box" label="Products (current)" value={P.length} />
+      <Kpi icon="clock" label="Not yet in a store (current)" value={notInStore} />
+      <Kpi icon="layers" label="Units in stores (current)" value={sum(B, (b) => Number(b.assigned))} />
       <Kpi icon="send" label="Supplied in period" value={sum(d.rows, (r: any) => Number(r.quantity))} />
       <Kpi icon="gift" label="Gifted in period" value={sum(d.gifts, (g: any) => Number(g.quantity))} />
       <Kpi icon="alert" label="Damaged on offload" value={damagedOffload} tone={damagedOffload ? 'warn' : undefined} />
@@ -86,17 +90,17 @@ export default function AdminDashboard() {
       <Kpi icon="alert" label="Missing on offload" value={missingOffload} tone={missingOffload ? 'warn' : undefined} />
       <Kpi icon="alert" label="Missing in supply (period)" value={missingSupply} tone={missingSupply ? 'warn' : undefined} />
       <Kpi icon="alert" label="Damaged or missing (period)" value={lost} tone={lost ? 'warn' : undefined} />
-      <Kpi icon="archive" label="Remaining in stores" value={sum(B, (b) => Number(b.remaining))} />
-      <Kpi icon="flag" label="Open reports" value={d.open} tone={d.open ? 'bad' : undefined} />
+      <Kpi icon="archive" label="Remaining in stores (current)" value={sum(B, (b) => Number(b.remaining))} />
+      <Kpi icon="flag" label="Open reports in period" value={d.open} tone={d.open ? 'bad' : undefined} />
     </div>
     <div className="content-grid wide">
       <div className="panel"><h2>Supplied, gifted and lost: {dateLabel}</h2>
         <SupplyLossChart labels={chartDays.map((day) => new Date(`${day}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }))} supplied={dailyTotals(d.rows)} gifted={dailyTotals(d.gifts)} lost={dailyTotals(d.losses)} /></div>
-      <div className="panel"><h2>Stock health</h2>
+      <div className="panel"><h2>Stock health (current)</h2>
         <StatusDonut ok={lv.filter((x) => x === 'ok').length} low={lv.filter((x) => x === 'low').length} out={lv.filter((x) => x === 'out').length} /></div>
     </div>
     <div className="content-grid">
-      <div className="panel"><h2>Remaining by store</h2><StoreBars labels={byStore.map((x: any) => x.name)} values={byStore.map((x: any) => x.u)} /></div>
+      <div className="panel"><h2>Remaining by store (current)</h2><StoreBars labels={byStore.map((x: any) => x.name)} values={byStore.map((x: any) => x.u)} /></div>
       <div className="panel"><h2>Top products supplied: {dateLabel}</h2><TopBars labels={top.map(([n]) => n)} values={top.map(([, v]) => v)} /></div>
     </div>
     <div className="content-grid">

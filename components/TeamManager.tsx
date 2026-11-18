@@ -23,10 +23,20 @@ function Credentials({ email, password }: { email: string; password: string }) {
 }
 
 function PasswordField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [showPassword, setShowPassword] = useState(false)
   return (
     <label>Password
       <div className="mt-1 flex gap-2">
-        <input className="mt-0 min-w-0 flex-1" value={value} onChange={(e) => onChange(e.target.value)} autoComplete="off" spellCheck={false} />
+        <span className="relative min-w-0 flex-1">
+          <input className="mt-0 w-full pr-11" type={showPassword ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} autoComplete="new-password" spellCheck={false} placeholder="Enter a password" />
+          <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 rounded border-0 bg-transparent p-1 text-mute hover:text-ink" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {showPassword
+                ? <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>
+                : <><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a13.7 13.7 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.7 10.7 0 0 0 4-.8" /></>}
+            </svg>
+          </button>
+        </span>
         <button type="button" className={cx(btn('ghost', 'sm'), 'whitespace-nowrap')} onClick={() => onChange(genPassword())}>Generate</button>
       </div>
       <span className="mt-1 block text-xs">At least 8 characters with upper and lower case letters, a number and a symbol. The manager can change it later in Settings.</span>
@@ -60,8 +70,8 @@ function CreateForm({ stores, counts, onClose, onDone }: { stores: Store[]; coun
     <div className="mt-2 flex justify-end"><button className={btn()} onClick={onClose}>Done</button></div>
   </>)
   return (<>
-    <label>Full name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} maxLength={80} autoComplete="off" /></label>
-    <label>Email<input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="off" /></label>
+    <label>Full name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} maxLength={80} autoComplete="name" placeholder="e.g., Alex Johnson" /></label>
+    <label>Email<input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" placeholder="name@example.com" /></label>
     <label>Store (up to 3 accounts each)
       <select value={f.store} onChange={(e) => setF({ ...f, store: e.target.value })}>
         {open.map((s) => <option key={s.id} value={s.id} disabled={(counts[s.id] ?? 0) >= 3}>{s.name} ({counts[s.id] ?? 0}/3 accounts)</option>)}

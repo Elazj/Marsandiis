@@ -12,7 +12,7 @@ export default function ManagerDashboard() {
     bal: await q(sb.from('supply_balance').select('*')),
     supplies: await q(sb.from('supplies').select('id, sheet_started_at, products(name, unit)')),
     log: await q(sb.from('activity_log').select('id, message, created_at').order('created_at', { ascending: false }).limit(6)),
-  }), ['supplies', 'sheet_rows', 'losses', 'gifts', 'activity_log', 'products'])
+  }), ['supplies', 'sheet_rows', 'losses', 'gifts', 'activity_log', 'products'], undefined, 5_000)
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
   const bal: any[] = d.bal

@@ -100,20 +100,20 @@ export default function SheetPage() {
       <div className="content-grid">
         <div className="panel"><h2>Record a supply</h2>
           {!online ? <p className="mute mt-0">You are offline. This entry stays on this device and sends later. If the store no longer has enough stock, you will be asked what to do.</p> : null}
-          <label>Customer name<input value={r.cust} maxLength={80} onChange={(e) => setR({ ...r, cust: e.target.value })} /></label>
-          <label>Supply ID (invoice or sales number)<input value={r.ref} maxLength={40} onChange={(e) => setR({ ...r, ref: e.target.value })} /></label>
-          <label>Quantity supplied ({p.unit})<input type="number" min="0" step="any" value={r.qty} onChange={(e) => setR({ ...r, qty: e.target.value })} /></label>
+          <label>Customer name<input value={r.cust} maxLength={80} onChange={(e) => setR({ ...r, cust: e.target.value })} placeholder="e.g., Alex Johnson" /></label>
+          <label>Supply ID (invoice or sales number)<input value={r.ref} maxLength={40} onChange={(e) => setR({ ...r, ref: e.target.value })} placeholder="e.g., INV-1003" /></label>
+          <label>Quantity supplied ({p.unit})<input type="number" min="0" step="any" value={r.qty} onChange={(e) => setR({ ...r, qty: e.target.value })} placeholder="e.g., 10" /></label>
           <p className="err" role="alert">{re}</p><button className="btn" onClick={addRow}>Add to sheet</button></div>
         <div className="panel"><h2>Record damaged or missing</h2>
           <label>Type<select value={l.kind} onChange={(e) => setL({ ...l, kind: e.target.value as 'damaged' | 'missing' })}><option value="damaged">Damaged during supply</option><option value="missing">Missing during supply</option></select></label>
-          <label>Quantity ({p.unit})<input type="number" min="0" step="any" value={l.qty} onChange={(e) => setL({ ...l, qty: e.target.value })} /></label>
-          <label>Note (optional)<input value={l.note} maxLength={120} onChange={(e) => setL({ ...l, note: e.target.value })} /></label>
+          <label>Quantity ({p.unit})<input type="number" min="0" step="any" value={l.qty} onChange={(e) => setL({ ...l, qty: e.target.value })} placeholder="e.g., 1" /></label>
+          <label>Note (optional)<input value={l.note} maxLength={120} onChange={(e) => setL({ ...l, note: e.target.value })} placeholder="Add a brief note" /></label>
           <p className="err" role="alert">{le}</p><button className="btn" onClick={addLoss}>Record</button></div>
         {allowGifts ? <div className="panel"><h2>Record a gift</h2>
           <p className="mute mt-0">For products you give away instead of selling. A gift is taken off the stock left in the store.</p>
-          <label>Gifted to (name)<input value={g.to} maxLength={80} onChange={(e) => setG({ ...g, to: e.target.value })} /></label>
-          <label>Quantity gifted ({p.unit})<input type="number" min="0" step="any" value={g.qty} onChange={(e) => setG({ ...g, qty: e.target.value })} /></label>
-          <label>Note (optional)<input value={g.note} maxLength={120} onChange={(e) => setG({ ...g, note: e.target.value })} /></label>
+          <label>Gifted to (name)<input value={g.to} maxLength={80} onChange={(e) => setG({ ...g, to: e.target.value })} placeholder="e.g., Alex Johnson" /></label>
+          <label>Quantity gifted ({p.unit})<input type="number" min="0" step="any" value={g.qty} onChange={(e) => setG({ ...g, qty: e.target.value })} placeholder="e.g., 1" /></label>
+          <label>Note (optional)<input value={g.note} maxLength={120} onChange={(e) => setG({ ...g, note: e.target.value })} placeholder="Add a brief note" /></label>
           <p className="err" role="alert">{ge}</p><button className="btn" onClick={addGift}>Record gift</button></div> : null}
       </div>
       <div className="panel"><SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} /></div>

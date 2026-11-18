@@ -31,7 +31,7 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     <label className="flex items-center gap-2">
       <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all store manager accounts of this company
     </label>
-    <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
+    <label>Type RESET to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="Type RESET" /></label>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn danger" disabled={busy} onClick={go}>{busy ? 'Resetting…' : 'Reset everything'}</button></div>
   </>)
@@ -65,7 +65,7 @@ function DeleteAccountBody({ onClose }: { onClose: () => void }) {
   }
   return (<>
     <p className="mute mt-0">This permanently deletes your admin account, your company and everything in it: stores, products, supplies, sheet entries, gifts, reports and activity. It also deletes every store manager account you created, so their logins stop working. It cannot be undone. Afterwards you can sign up again, even with the same company name.</p>
-    <label>Type DELETE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></label>
+    <label>Type DELETE to confirm<input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="Type DELETE" /></label>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn danger" disabled={busy} onClick={go}>{busy ? 'Deleting…' : 'Delete my account'}</button></div>
   </>)
@@ -96,8 +96,8 @@ function Password() {
     setOk(true); setM('Password updated.'); setA(''); setB('')
   }
   return (<>
-    <label>New password<input type="password" value={a} onChange={(e) => setA(e.target.value)} autoComplete="new-password" /></label>
-    <label>Confirm new password<input type="password" value={b} onChange={(e) => setB(e.target.value)} autoComplete="new-password" /></label>
+    <label>New password<input type="password" value={a} onChange={(e) => setA(e.target.value)} autoComplete="new-password" placeholder="Enter a new password" /></label>
+    <label>Confirm new password<input type="password" value={b} onChange={(e) => setB(e.target.value)} autoComplete="new-password" placeholder="Re-enter the new password" /></label>
     <p className={ok ? 'err ok' : 'err'} role="alert">{m}</p>
     <button className="btn sm" disabled={busy} onClick={save}>Update password</button>
   </>)

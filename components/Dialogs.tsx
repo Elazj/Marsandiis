@@ -36,13 +36,13 @@ function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose
     onSaved(); onClose()
   }
   return (<>
-    <label>Product name<input value={f.name} onChange={set('name')} maxLength={80} /></label>
-    <label>Container number<input value={f.container} onChange={set('container')} maxLength={40} /></label>
+    <label>Product name<input value={f.name} onChange={set('name')} maxLength={80} placeholder="e.g., Cooking oil" /></label>
+    <label>Container number<input value={f.container} onChange={set('container')} maxLength={40} placeholder="e.g., CONT-1001" /></label>
     <label>Date arrived{settings.requireArrival ? '' : ' (optional)'}<input type="date" value={f.arrived} max={localDay(new Date())} onChange={set('arrived')} /></label>
-    <label>Unit (carton, kg, liters, pieces)<input value={f.unit} onChange={set('unit')} maxLength={20} /></label>
-    <label>Total amount in the container<input type="number" min="0" step="any" value={f.total} onChange={set('total')} /></label>
-    <label>Damaged on offload<input type="number" min="0" step="any" value={f.dmg} onChange={set('dmg')} /></label>
-    <label>Missing before offload<input type="number" min="0" step="any" value={f.miss} onChange={set('miss')} /></label>
+    <label>Unit (carton, kg, liters, pieces)<input value={f.unit} onChange={set('unit')} maxLength={20} placeholder="e.g., cartons" /></label>
+    <label>Total amount in the container<input type="number" min="0" step="any" value={f.total} onChange={set('total')} placeholder="e.g., 100" /></label>
+    <label>Damaged on offload<input type="number" min="0" step="any" value={f.dmg} onChange={set('dmg')} placeholder="e.g., 2" /></label>
+    <label>Missing before offload<input type="number" min="0" step="any" value={f.miss} onChange={set('miss')} placeholder="e.g., 1" /></label>
     <div className={'calc' + (net <= 0 ? ' neg' : '')}><span>Amount to be supplied</span><b>{net}</b></div>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" onClick={save}>Save</button></div>
@@ -85,7 +85,7 @@ function SupplyForm({ products, stores, supply, preset, onClose, onSaved }: { pr
       <label>Store or warehouse<select value={sid} onChange={(e) => setSid(e.target.value)}>{open.length ? open.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">No active stores</option>}</select></label>
     </>)}
     <div className="note">Available to assign: {max} {prod?.unit} (of {prod?.net} to be supplied)</div>
-    <label>Quantity to supply to this store<input type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} /></label>
+    <label>Quantity to supply to this store<input type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="e.g., 20" /></label>
     <p className="err" role="alert">{err}</p>
     <div className="mfoot"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" onClick={save}>Save</button></div>
   </>)

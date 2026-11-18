@@ -53,8 +53,8 @@ export default function Stores() {
         })}</tbody></table></div> : <p className="mute m-0">No stores yet. Add your first store or warehouse to begin.</p>}
     </div>
     <Modal open={open} title="Add store" onClose={() => setOpen(false)}>
-      <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-      <label>Location<input value={f.loc} onChange={(e) => setF({ ...f, loc: e.target.value })} /></label>
+      <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g., Downtown Store" /></label>
+      <label>Location<input value={f.loc} onChange={(e) => setF({ ...f, loc: e.target.value })} placeholder="e.g., Main Street, Banjul" /></label>
       <p className="text-xs text-mute">Assign store managers when creating their accounts on the Team tab.</p>
       <p className="err" role="alert">{msg}</p>
       <div className="mfoot"><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" onClick={add}>Save</button></div>
