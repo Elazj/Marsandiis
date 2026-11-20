@@ -296,7 +296,7 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, fir
   }, [open])
 
   useEffect(() => { // close if the screen grows to desktop size
-    const mq = matchMedia('(min-width: 1000px)')
+    const mq = matchMedia('(min-width: 1100px)')
     const h = () => { if (mq.matches) setOpen(false) }
     mq.addEventListener('change', h)
     return () => mq.removeEventListener('change', h)
