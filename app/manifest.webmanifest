@@ -1,6 +1,6 @@
 {
-  "name": "Stockroom",
-  "short_name": "Stockroom",
+  "name": "Marsandiis",
+  "short_name": "Marsandiis",
   "description": "Multi-store stock management",
   "start_url": "/",
   "display": "standalone",

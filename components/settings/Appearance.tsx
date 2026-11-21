@@ -39,7 +39,7 @@ export default function Appearance() {
   function flipCompany(v: boolean) { setCompany(v); write('stockroom-hide-company', v ? null : '1'); tell() }
 
   return (<>
-    <TabHead title="Appearance" desc="How Stockroom looks on this device. Your choices are remembered on this device." />
+    <TabHead title="Appearance" desc="How Marsandiis looks on this device. Your choices are remembered on this device." />
     <div className="grid gap-3.5 sm:grid-cols-3" role="group" aria-label="Theme">
       {CARDS.map(([t, label, sw]) => (
         <button key={t} type="button" aria-pressed={theme === t} onClick={() => pick(t)}

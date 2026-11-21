@@ -14,7 +14,7 @@ export async function recordOrQueue(
   online: () => Promise<{ error: { message: string } | null }>,
 ): Promise<{ ok: true; queued: boolean } | { ok: false; message: string }> {
   const me = await whoAmI()
-  const item = { ...draft, id: draft.id ?? crypto.randomUUID(), createdAt: new Date().toISOString(), byName: me.name }
+  const item = { ...draft, id: draft.id ?? crypto.randomUUID(), createdAt: new Date().toISOString(), byName: me.name, byId: me.id }
   if (!isOnline()) {
     await enqueue(item)
     return { ok: true, queued: true }

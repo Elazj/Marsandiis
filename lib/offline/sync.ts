@@ -84,8 +84,6 @@ async function pushOne(item: OutboxItem): Promise<'ok' | 'conflict' | 'offline'>
       const { error } = await sb.rpc('start_sheet', { p_supply: item.supplyId })
       if (error) return fail(item, error.message, error.code)
     } else if (item.kind === 'sheet_row') {
-      const dup = await duplicateRef(item)
-      if (dup) return conflict(item, 'duplicate', `Supply ID ${item.payload.supply_ref} is already on this sheet.`, undefined)
       const hit = await insertWithIdempotency('sheet_rows', {
         supply_id: item.supplyId,
         customer: item.payload.customer,
@@ -127,17 +125,6 @@ async function pushOne(item: OutboxItem): Promise<'ok' | 'conflict' | 'offline'>
     if (net(m)) { item.status = 'pending'; await outboxPut(item); return 'offline' }
     return conflict(item, 'error', friendly(m))
   }
-}
-
-async function duplicateRef(item: OutboxItem) {
-  if (item.payload.force || !item.payload.supply_ref) return false
-  const { data, error } = await supabaseBrowser().from('sheet_rows')
-    .select('id, client_id').eq('supply_id', item.supplyId).eq('supply_ref', item.payload.supply_ref).limit(8)
-  if (error) {
-    if (net(error.message)) throw error
-    return false
-  }
-  return (data ?? []).some((r: any) => r.client_id !== item.id)
 }
 
 async function insertWithIdempotency(table: 'sheet_rows' | 'losses' | 'gifts', body: Record<string, unknown>): Promise<'ok' | { message: string; code?: string } | 'offline'> {

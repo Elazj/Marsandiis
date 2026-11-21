@@ -1,4 +1,4 @@
--- Stockroom schema. Paste into the Supabase SQL editor and run once (new projects only).
+-- Marsandiis schema. Paste into the Supabase SQL editor and run once (new projects only).
 -- Already ran an older version? Run the applicable migration-002.sql through migration-011.sql files.
 -- Every company has exactly one admin; all data is separated per company.
 
@@ -248,6 +248,37 @@ create trigger rows_guard before insert on sheet_rows for each row execute funct
 create trigger losses_guard before insert on losses for each row execute function guard_overdraw();
 create trigger gifts_guard before insert on gifts for each row execute function guard_overdraw();
 
+-- A sales or invoice number can be repeated within a store only for the same customer.
+create function guard_supply_ref_customer() returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  current_store uuid;
+  normalized_ref text;
+  normalized_customer text;
+begin
+  select store_id into current_store from public.supplies where id = new.supply_id;
+  if current_store is null then return new; end if;
+
+  normalized_ref := lower(regexp_replace(btrim(new.supply_ref), '\s+', ' ', 'g'));
+  normalized_customer := lower(regexp_replace(btrim(new.customer), '\s+', ' ', 'g'));
+  perform pg_advisory_xact_lock(hashtextextended(current_store::text || ':' || normalized_ref, 0));
+
+  if exists (
+    select 1
+    from public.sheet_rows existing
+    join public.supplies existing_supply on existing_supply.id = existing.supply_id
+    where existing_supply.store_id = current_store
+      and lower(regexp_replace(btrim(existing.supply_ref), '\s+', ' ', 'g')) = normalized_ref
+      and lower(regexp_replace(btrim(existing.customer), '\s+', ' ', 'g')) <> normalized_customer
+      and existing.id <> new.id
+  ) then
+    raise exception 'customer name does not match the sales or invoice.';
+  end if;
+  return new;
+end $$;
+create trigger rows_ref_customer_guard
+  before insert or update of supply_id, supply_ref, customer on sheet_rows
+  for each row execute function guard_supply_ref_customer();
+
 -- Manager creates the sheet for a product in their store
 create function start_sheet(p_supply uuid) returns void language sql security definer set search_path = public
 as $$ update supplies set sheet_started_by = auth.uid(), sheet_started_at = now()
@@ -297,6 +328,7 @@ create policy sup_read      on supplies for select to authenticated using (((sel
 create policy sup_admin     on supplies for all to authenticated using ((select is_admin()) and company_id = (select my_company())) with check ((select is_admin()) and company_id = (select my_company()) and exists (select 1 from stores st where st.id = store_id and st.company_id = (select my_company())) and (select product_in_my_company(product_id)));
 create policy rows_read     on sheet_rows for select to authenticated using (((select is_admin()) and company_id = (select my_company())) or exists (select 1 from supplies s where s.id = supply_id and s.store_id = (select my_store())));
 create policy rows_add      on sheet_rows for insert to authenticated with check (entered_by = auth.uid() and company_id = (select my_company()) and exists (select 1 from supplies s where s.id = supply_id and s.store_id = (select my_store()) and s.sheet_started_at is not null));
+create policy rows_delete_own on sheet_rows for delete to authenticated using (entered_by = auth.uid() and company_id = (select my_company()) and exists (select 1 from supplies s where s.id = supply_id and s.store_id = (select my_store())));
 create policy loss_read     on losses for select to authenticated using (((select is_admin()) and company_id = (select my_company())) or exists (select 1 from supplies s where s.id = supply_id and s.store_id = (select my_store())));
 create policy loss_add      on losses for insert to authenticated with check (entered_by = auth.uid() and company_id = (select my_company()) and exists (select 1 from supplies s where s.id = supply_id and s.store_id = (select my_store()) and s.sheet_started_at is not null));
 create policy gift_read     on gifts for select to authenticated using (((select is_admin()) and company_id = (select my_company())) or exists (select 1 from supplies s where s.id = supply_id and s.store_id = (select my_store())));

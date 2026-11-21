@@ -12,9 +12,9 @@ export default function About() {
   useEffect(() => { q(supabaseBrowser().from('companies').select('name, created_at').limit(1)).then((r) => setCo(r?.[0] ?? null)).catch(() => {}) }, [])
   const val = (t: string) => <span className="text-[15px] font-semibold">{t}</span>
   return (<>
-    <TabHead title="About System" desc="Information about this Stockroom installation." />
+    <TabHead title="About System" desc="Information about this Marsandiis installation." />
     <div className="-mt-4">
-      <Row title="Application">{val('Stockroom')}</Row>
+      <Row title="Application">{val('Marsandiis')}</Row>
       <Row title="Version">{val(VERSION)}</Row>
       <Row title="Company">{val(co?.name ?? '-')}</Row>
       <Row title="Company created">{val(co?.created_at ? fmtT(co.created_at) : '-')}</Row>

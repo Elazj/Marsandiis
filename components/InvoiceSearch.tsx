@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { fmtT } from '@/lib/data'
 import { searchSupplyEntries, SupplySearchResult } from '@/lib/supplySearch'
 
-/** Admin search: find every supply entry by its invoice or sales number. */
+/** Find supply entries by their invoice or sales number. */
 export default function InvoiceSearch({ onOpen }: { onOpen: (supplyId: string) => void }) {
   const [term, setTerm] = useState('')
   const [rows, setRows] = useState<SupplySearchResult[] | null>(null)

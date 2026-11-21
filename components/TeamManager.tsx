@@ -15,7 +15,7 @@ const copy = async (text: string) => {
 
 // Sign in details the admin can copy and send to the manager.
 function Credentials({ email, password }: { email: string; password: string }) {
-  const text = `Stockroom sign in\nAddress: ${location.origin}/login\nEmail: ${email}\nPassword: ${password}`
+  const text = `Marsandiis sign in\nAddress: ${location.origin}/login\nEmail: ${email}\nPassword: ${password}`
   return (<>
     <pre className="mb-3 whitespace-pre-wrap break-all rounded-[10px] bg-bg p-3 text-[13px]">{text}</pre>
     <button className={btn('ghost', 'sm')} onClick={() => copy(text)}>Copy these details</button>

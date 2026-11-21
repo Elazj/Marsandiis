@@ -21,7 +21,7 @@ export default function HelpSupport({ role }: { role: Role }) {
     ]
 
   return <>
-    <TabHead title="Help & Support" desc="Quick links for common tasks and ways to get help with Stockroom." />
+    <TabHead title="Help & Support" desc="Quick links for common tasks and ways to get help with Marsandiis." />
     <div className="divide-y divide-line border-y border-line">
       {links.map(([href, title, description]) => <Link key={href} href={href} className="flex items-center gap-4 py-4 text-ink no-underline hover:text-acc">
         <span className="min-w-0 flex-1"><b className="block text-[15px]">{title}</b><span className="mt-0.5 block text-[13px] text-mute">{description}</span></span>
@@ -31,10 +31,10 @@ export default function HelpSupport({ role }: { role: Role }) {
     <section className="pt-5">
       <h3 className="mb-1 text-[16px] font-semibold">Contact support</h3>
       {SUPPORT_EMAIL
-        ? <p className="m-0 text-sm text-mute">Email <a className="text-acc" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> for help with Stockroom.</p>
+        ? <p className="m-0 text-sm text-mute">Email <a className="text-acc" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> for help with Marsandiis.</p>
         : role === 'manager'
           ? <p className="m-0 text-sm text-mute">Send a report to your company administrator using the Reports page.</p>
-          : <p className="m-0 text-sm text-mute">Contact your designated Stockroom support representative for additional help.</p>}
+          : <p className="m-0 text-sm text-mute">Contact your designated Marsandiis support representative for additional help.</p>}
     </section>
   </>
 }

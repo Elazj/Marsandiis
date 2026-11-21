@@ -1,13 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Hd } from '@/components/ui'
 import { useSettings } from '@/components/SettingsProvider'
 import { SheetTables } from '@/components/Sheet'
-import { downloadSheet, fmtT, loadSheet, logAct, qn, SHEET_LIVE, toast, useLive } from '@/lib/data'
+import { downloadSheet, fmtT, friendly, loadSheet, logAct, qn, SHEET_LIVE, toast, useLive } from '@/lib/data'
 import { insertEntry, recordOrQueue } from '@/lib/offline/record'
-import { overlaySheet } from '@/lib/offline/sync'
+import { discardItem, overlaySheet } from '@/lib/offline/sync'
 import { useOnline, useOutbox } from '@/lib/offline/useOutbox'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
@@ -17,12 +17,28 @@ export default function SheetPage() {
   const online = useOnline()
   const { items } = useOutbox(id)
   const { data: raw, err, reload } = useLive(async (sb) => loadSheet(sb, id), SHEET_LIVE)
+  const [userId, setUserId] = useState('')
+  const [userError, setUserError] = useState('')
   const [r, setR] = useState({ cust: '', ref: '', qty: '' })
   const [l, setL] = useState({ kind: 'damaged' as 'damaged' | 'missing', qty: '', note: '' })
   const [re, setRe] = useState('')
   const [le, setLe] = useState('')
   const [g, setG] = useState({ to: '', qty: '', note: '' })
   const [ge, setGe] = useState('')
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const { data, error } = await supabaseBrowser().auth.getUser()
+        if (!active) return
+        if (error) setUserError(friendly(error.message))
+        else setUserId(data.user?.id ?? '')
+      } catch (error) {
+        if (active) setUserError(error instanceof Error ? error.message : 'Could not verify your account.')
+      }
+    })()
+    return () => { active = false }
+  }, [])
   if (err) return <div><p className="err">{err}</p><Link href="/manager/entry">Back to sheets</Link></div>
   if (!raw) return <p className="mute">Loading…</p>
   const d = overlaySheet(raw, items)
@@ -85,6 +101,32 @@ export default function SheetPage() {
     else { await logAct(log); toast('Gift recorded') }
     setG({ to: '', qty: '', note: '' }); reload()
   }
+  function canUndoRow(row: any) {
+    if (row.pending || row.conflict) return items.some((item) => item.id === row.id && item.kind === 'sheet_row' && item.byId === userId && item.status !== 'syncing')
+    return !!userId && row.entered_by === userId
+  }
+  async function undoRow(row: any) {
+    if (row.pending || row.conflict) {
+      const item = items.find((pending) => pending.id === row.id && pending.kind === 'sheet_row' && pending.byId === userId && pending.status !== 'syncing')
+      if (!item) return 'This pending record does not belong to your account.'
+      await discardItem(row.id)
+    } else {
+      if (!userId) return userError || 'Could not verify your account.'
+      const sb = supabaseBrowser()
+      const { data: existing, error: lookupError } = await sb.from('sheet_rows').select('id')
+        .eq('id', row.id).eq('entered_by', userId).maybeSingle()
+      if (lookupError) return friendly(lookupError.message)
+      if (!existing) return 'This record is no longer available to undo.'
+      const { data, error } = await sb.from('sheet_rows').delete()
+        .eq('id', row.id).eq('entered_by', userId).select('id').maybeSingle()
+      if (error) return friendly(error.message)
+      if (!data) return 'The database did not allow this undo. If this is an existing database, run supabase/migration-016.sql in the Supabase SQL editor, then try again.'
+      await logAct(`Undid supply record ${row.supply_ref} for ${row.customer}`)
+    }
+    reload()
+    toast('Record undone and quantity restored.')
+    return ''
+  }
 
   return (<>
     <Hd title={`Sheet: ${p.name}`} sub={`${s.stores?.name ?? 'Your store'}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}${online ? '' : ' · offline'}`}>
@@ -116,7 +158,10 @@ export default function SheetPage() {
           <label>Note (optional)<input value={g.note} maxLength={120} onChange={(e) => setG({ ...g, note: e.target.value })} placeholder="Add a brief note" /></label>
           <p className="err" role="alert">{ge}</p><button className="btn" onClick={addGift}>Record gift</button></div> : null}
       </div>
-      <div className="panel"><SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} /></div>
+      <div className="panel">
+        {userError ? <p className="err" role="alert">{userError}</p> : null}
+        <SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} canUndo={canUndoRow} onUndo={undoRow} />
+      </div>
     </>)}
   </>)
 }

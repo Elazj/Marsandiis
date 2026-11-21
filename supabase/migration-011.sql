@@ -81,7 +81,7 @@ begin
     raise exception 'Only an admin can restore a backup';
   end if;
   if coalesce(p->>'format', '') <> 'stockroom-backup-1' then
-    raise exception 'This file is not a Stockroom backup';
+    raise exception 'This file is not a Marsandiis backup';
   end if;
 
   select coalesce(jsonb_agg(jsonb_build_object('id', id, 'store', store_id)), '[]'::jsonb) into asg

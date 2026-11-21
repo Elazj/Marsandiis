@@ -87,7 +87,7 @@ export default function Login() {
     <main className="grid min-h-dvh place-items-center px-4 pb-6 pt-16">
       <div className="fixed right-[calc(14px_+_env(safe-area-inset-right,0px))] top-[calc(14px_+_env(safe-area-inset-top,0px))] z-[5]"><ThemeToggle /></div>
       <div className={cx(panel, 'w-full max-w-[440px]')}>
-        <div className="mb-1 flex items-center gap-3"><img src="/logo-icon.svg" alt="" width={44} height={44} /><h1 className="m-0">Stockroom</h1></div>
+        <div className="mb-1 flex items-center gap-3"><img src="/logo-icon.svg" alt="" width={44} height={44} /><h1 className="m-0">Marsandiis</h1></div>
         <p className="m-0 text-mute">Stock balances for every store, in one place.</p>
         {conn === 'missing' && <div className={notice} role="alert">The Supabase address or key is missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (in .env.local, or in Vercel then redeploy).</div>}
         {conn === 'unreachable' && <div className={notice} role="alert">Cannot reach Supabase at <b>{host}</b>. Check that: the project is not paused (open the Supabase dashboard and Restore it); the URL has no typo, quotes or spaces; no ad blocker or firewall blocks supabase.co; and on Vercel you redeployed after setting the variables.</div>}
