@@ -52,7 +52,7 @@ export default function Notifications({ role }: { role: Role }) {
     <h3 className="mb-0 mt-6 text-[15px]">How to receive them</h3>
     <div>
       <Row title="In the app" desc="A Notices list at the top of your dashboard."><Switch on={p.inApp} onChange={set('inApp')} label="Show notices in the app" /></Row>
-      <Row title="By email" desc="Needs an email service connected to Stockroom, which is not set up yet."><Switch on={false} onChange={() => {}} label="By email" disabled /></Row>
+      <Row title="By email" desc="Needs an email service connected to Marsandiis, which is not set up yet."><Switch on={false} onChange={() => {}} label="By email" disabled /></Row>
     </div>
     <button className="btn mt-4" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
   </>)

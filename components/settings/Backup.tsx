@@ -91,7 +91,7 @@ export default function Backup() {
       const company = (await q(sb.from('companies').select('name').limit(1)))?.[0]?.name ?? ''
       const out: any = { format: FORMAT, createdAt: new Date().toISOString(), company }
       for (const t of TABLES) out[t] = await fetchAll(t)
-      download(`stockroom-backup-${localDay(new Date())}.json`, JSON.stringify(out))
+      download(`marsandiis-backup-${localDay(new Date())}.json`, JSON.stringify(out))
       const when = new Date().toLocaleString()
       try { localStorage.setItem('stockroom-last-backup', when) } catch {}
       setLast(when); toast('Backup downloaded')
@@ -116,7 +116,7 @@ export default function Backup() {
     setMsg('')
     try {
       const b = JSON.parse(await f.text())
-      if (b?.format !== FORMAT) return setMsg('This file is not a Stockroom backup.')
+      if (b?.format !== FORMAT) return setMsg('This file is not a Marsandiis backup.')
       setPicked({ file: f.name, backup: b })
     } catch { setMsg('This file could not be read. Choose a backup made by Download full backup.') }
     if (input.current) input.current.value = ''

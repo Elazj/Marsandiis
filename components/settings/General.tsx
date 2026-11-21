@@ -42,7 +42,7 @@ export default function General() {
       <Row title="Company name" desc="Edit the name to correct a spelling mistake. It appears on dashboards and in the side bar for you and your managers.">
         <input className="mt-0 w-full sm:w-64" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} aria-label="Company name" placeholder="e.g., Acme Supplies" />
       </Row>
-      <Row title="Currency" desc="Kept for the company. Stockroom does not track prices yet, so no amounts are shown.">
+      <Row title="Currency" desc="Kept for the company. Marsandiis does not track prices yet, so no amounts are shown.">
         <select className="mt-0 w-full sm:w-44" value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })} aria-label="Currency">
           {[...new Set([f.currency, ...CURRENCIES])].map((c) => <option key={c}>{c}</option>)}
         </select>

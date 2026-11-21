@@ -133,7 +133,7 @@ export default function Settings({ role }: { role: 'admin' | 'manager' }) {
       </div>
       <div className="panel"><h2>Change password</h2><Password /></div>
       <div className="panel"><h2>Session</h2>
-        <p className="mute mt-0">Sign out of Stockroom on this device.</p>
+        <p className="mute mt-0">Sign out of Marsandiis on this device.</p>
         <SignOut />
       </div>
       {role === 'admin' ? (

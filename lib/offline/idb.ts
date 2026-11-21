@@ -11,6 +11,7 @@ export type OutboxItem = {
   createdAt: string
   status: OutboxStatus
   byName: string
+  byId?: string
   log: string
   payload: {
     customer?: string

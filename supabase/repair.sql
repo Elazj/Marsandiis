@@ -1,4 +1,4 @@
--- STOCKROOM REPAIR SCRIPT
+-- MARSANDIIS REPAIR SCRIPT
 -- Safe to run more than once. Paste it into the Supabase SQL editor (New query) and press Run.
 -- It brings an older database up to date (everything from migration-002 through 006 that is about tables,
 -- grants and live updates), then shows a check table at the bottom. Every row of that table should say true.

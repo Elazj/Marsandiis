@@ -1,18 +1,28 @@
 'use client'
+import { useState } from 'react'
 import { downloadSheet, fmtT, loadSheet, useLive } from '@/lib/data'
-import { useSort } from '@/components/ui'
+import { Confirm, useSort } from '@/components/ui'
 import InvoiceSearch from '@/components/InvoiceSearch'
 
-export function SheetTables({ rows, losses, gifts = [] }: { rows: any[]; losses: any[]; gifts?: any[] }) {
+export function SheetTables({ rows, losses, gifts = [], canUndo, onUndo }: { rows: any[]; losses: any[]; gifts?: any[]; canUndo?: (row: any) => boolean; onUndo?: (row: any) => Promise<string> }) {
+  const [undoing, setUndoing] = useState<any>(null)
   const s = useSort(rows, { date: (r) => r.created_at, customer: (r) => r.customer, ref: (r) => r.supply_ref, qty: (r) => Number(r.quantity) }, { k: 'date', d: -1 })
   return (<>
     <h2>Supplies to customers</h2>
     {rows.length ? (
       <div className="wrap"><table>
-        <thead><tr>{s.th('date', 'Date')}{s.th('customer', 'Customer')}{s.th('ref', 'Supply ID')}{s.th('qty', 'Qty', 'n')}<th>By</th></tr></thead>
-        <tbody>{s.rows.map((r) => <tr key={r.id}><td>{fmtT(r.created_at)}</td><td>{r.customer}{r.pending ? <span className="chip low ml-2">Waiting to sync</span> : null}{r.conflict ? <span className="chip out ml-2">Needs a decision</span> : null}</td><td>{r.supply_ref}</td><td className="n">{r.quantity}</td><td>{r.profiles?.full_name ?? ''}</td></tr>)}</tbody>
+        <thead><tr>{s.th('date', 'Date')}{s.th('customer', 'Customer')}{s.th('ref', 'Supply ID')}{s.th('qty', 'Qty', 'n')}<th>By</th>{canUndo && onUndo ? <th /> : null}</tr></thead>
+        <tbody>{s.rows.map((r) => <tr key={r.id}><td>{fmtT(r.created_at)}</td><td>{r.customer}{r.pending ? <span className="chip low ml-2">Waiting to sync</span> : null}{r.conflict ? <span className="chip out ml-2">Needs a decision</span> : null}</td><td>{r.supply_ref}</td><td className="n">{r.quantity}</td><td>{r.profiles?.full_name ?? ''}</td>{canUndo && onUndo ? <td>{canUndo(r) ? <button className="btn ghost sm" onClick={() => setUndoing(r)}>Undo</button> : null}</td> : null}</tr>)}</tbody>
       </table></div>
     ) : <p className="mute m-0">Nothing recorded yet.</p>}
+    {canUndo && onUndo ? <Confirm
+      open={!!undoing}
+      title="Undo supply record"
+      text={undoing ? `Remove the record for ${undoing.customer} (${undoing.supply_ref})? Its quantity will be restored to the store.` : ''}
+      label="Undo record"
+      onClose={() => setUndoing(null)}
+      onConfirm={() => undoing ? onUndo(undoing) : Promise.resolve('No record selected.')}
+    /> : null}
     <h2 className="mt-[18px]">Damaged and missing during supply</h2>
     {losses.length ? (
       <div className="wrap"><table>

@@ -24,7 +24,7 @@ const linkCls = (active: boolean) => cx(
   active ? 'bg-accsoft font-semibold text-acc shadow-[inset_3px_0_0_var(--acc)]' : 'text-mute hover:bg-bg',
 )
 
-function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
+function GlobalSearch({ role, userId }: { role: 'admin' | 'manager'; userId: string }) {
   const router = useRouter()
   const root = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -38,7 +38,7 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
 
   useEffect(() => {
     const term = query.trim()
-    if (role !== 'admin' || !term) {
+    if (!term || (role === 'manager' && !userId)) {
       setSupplyResults([])
       setSupplyBusy(false)
       setSupplyError('')
@@ -51,7 +51,7 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
     setSupplyError('')
     const timer = window.setTimeout(async () => {
       try {
-        const results = await searchSupplyEntries(term, 6)
+        const results = await searchSupplyEntries(term, 6, role === 'manager' ? userId : undefined)
         if (!stale) {
           setSupplyResults(results)
           setSupplyError('')
@@ -66,7 +66,7 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
       }
     }, 300)
     return () => { stale = true; window.clearTimeout(timer) }
-  }, [query, role])
+  }, [query, role, userId])
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -97,6 +97,14 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
   }
 
   function openSupply(supply: SupplySearchResult) {
+    if (role === 'manager') {
+      router.push(`/manager/entry/${supply.supply_id}`)
+      setQuery('')
+      setSupplyResults([])
+      setOpen(false)
+      input.current?.blur()
+      return
+    }
     setSelectedSupply(supply)
     setQuery('')
     setSupplyResults([])
@@ -127,8 +135,8 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
           </button>
           ))}
         </> : null}
-        {role === 'admin' && query.trim() ? <>
-          <p className="m-0 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-mute">Supply entries</p>
+        {query.trim() ? <>
+          <p className="m-0 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-mute">{role === 'manager' ? 'Your supply entries' : 'Supply entries'}</p>
           {supplyResults.map((item) => (
             <button key={item.id} type="button" role="option" aria-selected="false" onClick={() => openSupply(item)} className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2.5 text-left text-sm text-ink hover:bg-bg">
               <Icon name="supplies" size={17} className="flex-none text-mute" />
@@ -138,9 +146,9 @@ function GlobalSearch({ role }: { role: 'admin' | 'manager' }) {
           ))}
           {supplyError ? <p className="m-0 px-2.5 py-2 text-sm text-bad" role="alert">{supplyError}</p> : null}
           {supplyBusy ? <p className="m-0 px-2.5 py-2 text-sm text-mute" role="status">Searching supply entries…</p> : null}
-          {!supplyError && !supplyBusy && !supplyResults.length ? <p className="m-0 px-2.5 py-2 text-sm text-mute">No matching supply entries</p> : null}
+          {!supplyError && !supplyBusy && !supplyResults.length ? <p className="m-0 px-2.5 py-2 text-sm text-mute">{role === 'manager' ? 'No matching entries you recorded' : 'No matching supply entries'}</p> : null}
         </> : null}
-        {!items.length && (role !== 'admin' || !query.trim()) ? <p className="m-0 px-3 py-2 text-sm text-mute">No matching pages</p> : null}
+        {!items.length && !query.trim() ? <p className="m-0 px-3 py-2 text-sm text-mute">No matching pages</p> : null}
       </div> : null}
     </div>
     <Modal open={!!selectedSupply} wide title="Supply sheet" onClose={() => setSelectedSupply(null)}>
@@ -229,7 +237,7 @@ function DownloadsMenu({ userId }: { userId: string }) {
           <Icon name="download" size={16} className="mt-0.5 flex-none text-mute" />
           <span className="min-w-0 flex-1"><b className="block break-all text-[13px] font-medium">{item.name}</b><time className="block text-[11px] text-mute">{new Date(item.downloadedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</time></span>
         </li>)}
-      </ul> : <p className="m-0 px-3 py-4 text-sm text-mute">No Stockroom downloads yet.</p>}
+      </ul> : <p className="m-0 px-3 py-4 text-sm text-mute">No Marsandiis downloads yet.</p>}
     </div>
   </details>
 }
@@ -316,7 +324,7 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, fir
         )}>
         <div className="flex items-center gap-2.5 px-2 pb-4 font-head text-[21px] font-semibold">
           <img src="/logo-icon.svg" alt="" width={30} height={30} />
-          <span className="bg-stockroom bg-clip-text text-transparent">Stockroom</span>
+          <span className="bg-stockroom bg-clip-text text-transparent">Marsandiis</span>
           <button className={cx(iconbtn, 'ml-auto lg:hidden')} aria-label="Close menu" onClick={() => setOpen(false)}>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
@@ -341,7 +349,7 @@ export default function Shell({ role, name, userId, sub, company, avatarUrl, fir
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
           <CurrentDateTime />
-          <GlobalSearch role={role} />
+          <GlobalSearch role={role} userId={userId} />
           <div className="ml-auto flex min-w-0 items-center gap-0.5 sm:gap-1.5">
             {role === 'admin' ? <>
               <AdminDateRangePicker className="min-w-0 flex-1 lg:hidden" />

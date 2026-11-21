@@ -4,7 +4,7 @@ import './globals.css'
 import type { Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 
-export const metadata = { title: 'Stockroom', description: 'Multi-store stock management' }
+export const metadata = { title: 'Marsandiis', description: 'Multi-store stock management' }
 
 // Makes the app fit every screen, including phones with a notch.
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#1673BB' }
