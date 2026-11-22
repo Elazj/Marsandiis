@@ -736,3 +736,102 @@
     @apply transition-none;
   }
 }
+
+/* ---- Marketing surfaces (landing + auth) ---- */
+/* Fixed brand navy, independent of the app's light/dark theme. Values come from the app palette. */
+.lp-navy {
+  --lp-deep: #0b1925;
+  --lp-panel: #122436;
+  --lp-line: rgba(140, 190, 230, 0.16);
+  --lp-text: #e4f1fb;
+  --lp-mute: #9db8cc;
+  --lp-sky: #38a8ee;
+  --lp-blue: #1673bb;
+  background-color: #0f2a3d;
+  color: var(--lp-text);
+}
+
+.lp-dots {
+  background-image: radial-gradient(rgba(22, 115, 187, 0.16) 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+
+.lp-navy .lp-dots,
+.lp-dots.lp-on-navy {
+  background-image: radial-gradient(rgba(120, 180, 230, 0.14) 1.5px, transparent 1.5px);
+}
+
+.lp-grid {
+  background-image: linear-gradient(rgba(140, 190, 230, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 190, 230, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.lp-plus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 22v12M22 28h12' stroke='%231673bb' stroke-opacity='0.14' stroke-width='2'/%3E%3C/svg%3E");
+  background-size: 56px 56px;
+}
+
+/* Scroll-triggered entrance */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Consistent auth input */
+.lp-input {
+  @apply mt-1.5 block h-12 w-full rounded-[10px] border border-line bg-panel px-3.5 text-[15px] text-ink transition-colors placeholder:text-mute/70 focus:border-acc focus:outline-none focus:ring-2 focus:ring-acc/25;
+}
+
+/* Landing FAQ accordion */
+.lp-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.lp-faq summary {
+  list-style: none;
+}
+
+.lp-faq[open] .lp-chev {
+  transform: rotate(180deg);
+}
+
+/* Custom scrollbar in the brand palette */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--acc);
+}
