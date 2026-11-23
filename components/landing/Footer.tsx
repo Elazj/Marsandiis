@@ -56,7 +56,7 @@ export default function Footer() {
           <div role="navigation" aria-label="Company">
             <h4 className="mb-4 text-[14px] font-bold text-white">Company</h4>
             <ul className="space-y-2.5 text-[14px]">
-              <li><span className="text-[#b9cfdf]">{COMPANY_NAME || 'Marsandiis'}</span></li>
+              {/* <li><span className="text-[#b9cfdf]">{COMPANY_NAME || 'Marsandiis'}</span></li> */}
               <li><button className="cursor-pointer border-0 bg-transparent p-0 text-[14px] text-[#b9cfdf] transition-colors hover:text-white" onClick={() => setSheet('privacy')}>Privacy</button></li>
               <li><button className="cursor-pointer border-0 bg-transparent p-0 text-[14px] text-[#b9cfdf] transition-colors hover:text-white" onClick={() => setSheet('terms')}>Terms</button></li>
             </ul>

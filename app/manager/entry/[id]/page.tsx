@@ -131,6 +131,7 @@ export default function SheetPage() {
   return (<>
     <Hd title={`Sheet: ${p.name}`} sub={`${s.stores?.name ?? 'Your store'}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}${online ? '' : ' · offline'}`}>
       <Link className="btn ghost sm no-underline" href="/manager/entry">All sheets</Link>
+      <Link className="btn ghost sm no-underline" href={`/manager/scan?supply=${id}`}>Scan out</Link>
       {s.sheet_started_at ? <button className="btn sm" onClick={() => downloadSheet(d)}>Download sheet</button> : null}
     </Hd>
     <div className="panel strip">

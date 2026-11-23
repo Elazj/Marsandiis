@@ -20,7 +20,8 @@ export const localDay = (d: string | Date) => new Date(d).toLocaleDateString('en
 export const fmtDay = (d?: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString([], { dateStyle: 'medium' }) : '-')
 
 export const friendly = (m: string) =>
-  /(gifts|companies|company_id|date_arrived|supply_balance|gifted)/i.test(m) && /does not exist|schema cache|could not find|column/i.test(m) ? 'The database needs one update: run supabase/migration-007.sql in the Supabase SQL editor, then reload.'
+  /barcode/i.test(m) && /does not exist|schema cache|could not find|column/i.test(m) ? 'The database needs one update: run supabase/migration-017.sql in the Supabase SQL editor, then reload.'
+  : /(gifts|companies|company_id|date_arrived|supply_balance|gifted)/i.test(m) && /does not exist|schema cache|could not find|column/i.test(m) ? 'The database needs one update: run supabase/migration-007.sql in the Supabase SQL editor, then reload.'
   : /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.'
   : /permission denied/i.test(m) ? 'The database is missing a permission grant. Run supabase/repair.sql (or migration-005.sql) in the Supabase SQL editor, then reload.'
   : m

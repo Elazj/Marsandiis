@@ -2,21 +2,21 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui'
 import { useSettings } from '@/components/SettingsProvider'
-import { act, localDay, logAct, num, r3 } from '@/lib/data'
+import { act, friendly, localDay, logAct, num, r3, toast } from '@/lib/data'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
-export type ProdRow = { id: string; name: string; container_no: string; date_arrived: string; unit: string; total: number; damaged_offload: number; missing_before_offload: number; net: number; alloc: number; free: number }
+export type ProdRow = { id: string; name: string; container_no: string; date_arrived: string; unit: string; barcode?: string | null; total: number; damaged_offload: number; missing_before_offload: number; net: number; alloc: number; free: number }
 export type StoreRow = { id: string; name: string; active: boolean }
 export type SupplyEdit = { id: string; product_id: string; store_id: string; quantity: number; used: number }
 
 function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose: () => void; onSaved: () => void }) {
   const settings = useSettings() // default unit and whether the arrival date is required
-  const [f, setF] = useState({ name: product?.name ?? '', container: product?.container_no ?? '', arrived: product?.date_arrived ?? localDay(new Date()), unit: product?.unit ?? settings.defaultUnit, total: product ? String(product.total) : '', dmg: String(product?.damaged_offload ?? 0), miss: String(product?.missing_before_offload ?? 0) })
+  const [f, setF] = useState({ name: product?.name ?? '', container: product?.container_no ?? '', arrived: product?.date_arrived ?? localDay(new Date()), unit: product?.unit ?? settings.defaultUnit, barcode: product?.barcode ?? '', total: product ? String(product.total) : '', dmg: String(product?.damaged_offload ?? 0), miss: String(product?.missing_before_offload ?? 0) })
   const [err, setErr] = useState('')
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value })
   const net = r3(num(f.total) - num(f.dmg) - num(f.miss))
   async function save() {
-    const name = f.name.trim(), cont = f.container.trim(), t = Number(f.total), d = Number(f.dmg) || 0, m = Number(f.miss) || 0
+    const name = f.name.trim(), cont = f.container.trim(), bc = f.barcode.trim(), t = Number(f.total), d = Number(f.dmg) || 0, m = Number(f.miss) || 0
     if (!name) return setErr('Enter a product name.')
     if (!cont) return setErr('Enter the container number.')
     if (!f.arrived && settings.requireArrival) return setErr('Enter the date the product arrived.')
@@ -25,19 +25,27 @@ function ProductForm({ product, onClose, onSaved }: { product?: ProdRow; onClose
     if (d < 0 || m < 0) return setErr('Damaged and missing amounts cannot be negative.')
     if (t - d - m <= 0) return setErr('Nothing is left to supply after the damaged and missing amounts.')
     if (product && r3(t - d - m) < product.alloc) return setErr(`${product.alloc} ${product.unit} is already in stores, more than ${r3(t - d - m)}.`)
+    if (bc && !/^[A-Za-z0-9._-]{3,64}$/.test(bc)) return setErr('The barcode must be 3-64 characters: letters, digits, dots, dashes or underscores.')
     const unit = f.unit.trim() || settings.defaultUnit
-    const row = { name, container_no: cont, date_arrived: f.arrived || localDay(new Date()), unit, total: t, damaged_offload: d, missing_before_offload: m }
+    const row = { name, container_no: cont, date_arrived: f.arrived || localDay(new Date()), unit, total: t, damaged_offload: d, missing_before_offload: m, barcode: bc || null }
     const sb = supabaseBrowser()
-    const ok = product
-      ? await act(sb.from('products').update(row).eq('id', product.id), 'Product updated', setErr)
-      : await act(sb.from('products').insert(row), `Product created. ${net} ${unit} ready to add to a store.`, setErr)
-    if (!ok) return
+    const write = (body: Record<string, unknown>) => product ? sb.from('products').update(body).eq('id', product.id) : sb.from('products').insert(body)
+    let res = await write(row)
+    // Older databases have no barcode column yet. Keep the product saving; only a filled barcode needs the update.
+    if (res.error && /barcode/i.test(res.error.message) && /column|does not exist|schema cache/i.test(res.error.message)) {
+      if (bc) return setErr('The database needs one update: run supabase/migration-017.sql in the Supabase SQL editor, then save again.')
+      const { barcode: _b, ...rest } = row
+      res = await write(rest)
+    }
+    if (res.error) return setErr(res.error.code === '23505' ? ((res.error.details ?? '').includes('products_barcode_unique') ? 'Another product already uses this barcode.' : 'That already exists.') : friendly(res.error.message))
+    toast(product ? 'Product updated' : `Product created. ${net} ${unit} ready to add to a store.`)
     await logAct(product ? `Updated product ${name} (container ${cont})` : `Created product ${name} (container ${cont}): ${net} ${unit} to be supplied`)
     onSaved(); onClose()
   }
   return (<>
     <label>Product name<input value={f.name} onChange={set('name')} maxLength={80} placeholder="e.g., Cooking oil" /></label>
     <label>Container number<input value={f.container} onChange={set('container')} maxLength={40} placeholder="e.g., CONT-1001" /></label>
+    <label>Barcode (optional, for scan-verified stock-out)<input value={f.barcode} onChange={set('barcode')} maxLength={64} placeholder="e.g., 6161100012345" /></label>
     <label>Date arrived{settings.requireArrival ? '' : ' (optional)'}<input type="date" value={f.arrived} max={localDay(new Date())} onChange={set('arrived')} /></label>
     <label>Unit (carton, kg, liters, pieces)<input value={f.unit} onChange={set('unit')} maxLength={20} placeholder="e.g., cartons" /></label>
     <label>Total amount in the container<input type="number" min="0" step="any" value={f.total} onChange={set('total')} placeholder="e.g., 100" /></label>

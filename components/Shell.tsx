@@ -16,7 +16,7 @@ import { cx, iconbtn } from '@/lib/tw'
 
 const NAV: Record<string, [string, string, string][]> = {
   admin: [['/admin', 'Dashboard', 'dashboard'], ['/admin/stores', 'Stores', 'stores'], ['/admin/team', 'Team', 'users'], ['/admin/products', 'Products', 'products'], ['/admin/supplies', 'Supplies', 'supplies'], ['/admin/forecast', 'Forecast', 'forecast'], ['/admin/reports', 'Reports', 'reports'], ['/admin/settings', 'Settings', 'settings']],
-  manager: [['/manager', 'Dashboard', 'dashboard'], ['/manager/entry', 'Daily entry', 'entry'], ['/manager/forecast', 'Forecast', 'forecast'], ['/manager/reports', 'Reports', 'reports'], ['/manager/settings', 'Settings', 'settings']],
+  manager: [['/manager', 'Dashboard', 'dashboard'], ['/manager/entry', 'Daily entry', 'entry'], ['/manager/scan', 'Scan out', 'scan'], ['/manager/forecast', 'Forecast', 'forecast'], ['/manager/reports', 'Reports', 'reports'], ['/manager/settings', 'Settings', 'settings']],
 }
 
 const linkCls = (active: boolean) => cx(
