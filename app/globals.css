@@ -487,6 +487,51 @@
     @apply text-[13px] text-mute;
   }
 
+  .scan-stage {
+    @apply relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#0b1925];
+  }
+
+  .scan-line {
+    @apply absolute inset-x-8 h-[2px] rounded-full bg-acc;
+    box-shadow: 0 0 14px var(--acc);
+    animation: scanmove 2.4s ease-in-out infinite;
+  }
+
+  @keyframes scanmove {
+    0%, 100% { top: 14%; }
+    50% { top: 84%; }
+  }
+
+  .scan-progress {
+    @apply h-2.5 w-full overflow-hidden rounded-full bg-accsoft;
+  }
+
+  .scan-progress > div {
+    @apply h-full rounded-full bg-stockroom transition-[width] duration-300 ease-out;
+  }
+
+  .scan-feed {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .scan-feed::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scan-feed::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scan-feed::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 8px;
+  }
+
+  .scan-feed::-webkit-scrollbar-thumb:hover {
+    background: var(--acc);
+  }
+
   .cards {
     @apply grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-[14px];
   }

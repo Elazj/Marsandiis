@@ -1,5 +1,5 @@
 -- Marsandiis schema. Paste into the Supabase SQL editor and run once (new projects only).
--- Already ran an older version? Run the applicable migration-002.sql through migration-011.sql files.
+-- Already ran an older version? Run the applicable migration-002.sql through migration-017.sql files.
 -- Every company has exactly one admin; all data is separated per company.
 
 create table companies (
@@ -36,6 +36,7 @@ create table products (
   company_id uuid not null references companies on delete cascade,
   date_arrived date not null default current_date,
   name text not null, container_no text not null, unit text not null default 'pieces',
+  barcode text check (barcode is null or char_length(barcode) between 3 and 64),
   total numeric not null check (total > 0),
   damaged_offload numeric not null default 0 check (damaged_offload >= 0),
   missing_before_offload numeric not null default 0 check (missing_before_offload >= 0),
@@ -44,6 +45,8 @@ create table products (
   check (total - damaged_offload - missing_before_offload > 0),
   unique (company_id, name, container_no)
 );
+-- One barcode identifies one product within a company (scan-verified stock-out).
+create unique index products_barcode_unique on products (company_id, barcode) where barcode is not null;
 
 create table supplies (            -- a product added to a store
   id uuid primary key default gen_random_uuid(),
