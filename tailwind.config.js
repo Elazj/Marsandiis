@@ -27,18 +27,31 @@ module.exports = {
       },
       fontFamily: {
         body: ['var(--font-body)', 'system-ui', 'sans-serif'],
-        head: ['var(--font-head)', 'Georgia', 'serif'],
+        head: ['var(--font-head)', 'Fraunces', 'Georgia', 'serif'],
       },
       boxShadow: {
         panel: 'var(--shadow)',
       },
       backgroundImage: {
+        marsandiis: 'var(--grad)',
         stockroom: 'var(--grad)',
       },
       keyframes: {
         fadeup: {
           from: { opacity: '0', transform: 'translateY(10px)' },
           to: { opacity: '1', transform: 'none' },
+        },
+        'fade-up': {
+          from: { opacity: '0', transform: 'translateY(20px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'float-slow': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-20px)' },
+        },
+        'slide-down': {
+          from: { opacity: '0', transform: 'translateY(-10px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
         },
         live: {
           '0%': { boxShadow: '0 0 0 0 rgba(124,255,178,.7)' },
@@ -47,6 +60,9 @@ module.exports = {
       },
       animation: {
         fadeup: 'fadeup .45s ease both',
+        'fade-up': 'fade-up .7s ease-out forwards',
+        'float-slow': 'float-slow 6s ease-in-out infinite',
+        'slide-down': 'slide-down .3s ease-out forwards',
         live: 'live 1.8s infinite',
       },
     },

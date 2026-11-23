@@ -1,5 +1,5 @@
 type ButtonVariant = 'primary' | 'ghost' | 'danger'
-type ButtonSize = 'sm' | 'md'
+type ButtonSize = 'sm' | 'md' | 'lg' | 'xl'
 
 export function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
@@ -12,6 +12,8 @@ export function btn(variant: ButtonVariant = 'primary', size: ButtonSize = 'md',
     variant === 'ghost' && 'border-line bg-transparent text-ink',
     variant === 'danger' && 'border-transparent bg-bad text-white',
     size === 'sm' && 'px-3 py-1.5 text-[13px]',
+    size === 'lg' && 'px-6 py-3 text-base',
+    size === 'xl' && 'px-8 py-4 text-lg',
     full && 'w-full',
   )
 }
