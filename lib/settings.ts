@@ -14,11 +14,20 @@ export type CompanySettings = {
   requireArrival: boolean // the date arrived must be entered on every product
   allowGifts: boolean     // store managers can record gifts
   sessionTimeoutMinutes: number
+  gmdToXofRate: number    // stored as CFA per 1 GMD; admin enters the GMD value of 5000 CFA; 0 means unconfigured
+  businessAddress: string
+  businessPhone: string
+  businessEmail: string
+  receiptFooter: string
+  receiptLogoMode: 'logo' | 'name'
+  receiptLogo: string
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
   currency: 'USD', dateFormat: 'medium', timeZone: '', language: 'en',
   lowStockPct: 20, defaultUnit: 'pieces', forecastDays: 56, requireArrival: true, allowGifts: true, sessionTimeoutMinutes: 30,
+  gmdToXofRate: 0, businessAddress: '', businessPhone: '', businessEmail: '', receiptFooter: '',
+  receiptLogoMode: 'name', receiptLogo: '',
 }
 
 const clamp = (v: unknown, min: number, max: number, d: number) => {
@@ -40,6 +49,13 @@ export function normalizeSettings(raw: any): CompanySettings {
     requireArrival: typeof r.requireArrival === 'boolean' ? r.requireArrival : d.requireArrival,
     allowGifts: typeof r.allowGifts === 'boolean' ? r.allowGifts : d.allowGifts,
     sessionTimeoutMinutes: [5, 15, 30, 60, 120].includes(Number(r.sessionTimeoutMinutes)) ? Number(r.sessionTimeoutMinutes) : d.sessionTimeoutMinutes,
+    gmdToXofRate: Number(r.gmdToXofRate) > 0 && isFinite(Number(r.gmdToXofRate)) ? Number(r.gmdToXofRate) : 0,
+    businessAddress: typeof r.businessAddress === 'string' ? r.businessAddress.trim().slice(0, 200) : '',
+    businessPhone: typeof r.businessPhone === 'string' ? r.businessPhone.trim().slice(0, 40) : '',
+    businessEmail: typeof r.businessEmail === 'string' ? r.businessEmail.trim().slice(0, 120) : '',
+    receiptFooter: typeof r.receiptFooter === 'string' ? r.receiptFooter.trim().slice(0, 200) : '',
+    receiptLogoMode: r.receiptLogoMode === 'logo' ? 'logo' : 'name',
+    receiptLogo: typeof r.receiptLogo === 'string' && r.receiptLogo.startsWith('data:image/jpeg;base64,') && r.receiptLogo.length <= 900000 ? r.receiptLogo : '',
   }
 }
 

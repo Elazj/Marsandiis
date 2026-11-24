@@ -6,8 +6,8 @@ Many companies can use one deployment: each company has one admin and its own se
 
 ## Set up (new Supabase project)
 1. Create a project at supabase.com.
-2. SQL editor: paste all of `supabase/schema.sql` and run it.
-   Already ran an older schema? Run `migration-002.sql` through `migration-016.sql` (each once, only if not yet run, in that order) in new query tabs.
+2. SQL editor: paste all of `supabase/schema.sql` and run it, then run `migration-017.sql`, `migration-018.sql`, and `migration-019.sql` in new query tabs.
+   Already ran an older schema? Run `migration-002.sql` through `migration-019.sql` (each once, only if not yet run, in that order) in new query tabs.
    `migration-007.sql` adds companies, per-company data separation, "date arrived" and gifts. Your existing data moves into one company called "My company"
    (rename it with the one-line `update` shown at the top of that file). Do not run `migration-002`, `003` or `004` again after 007.
    `migration-008.sql` fixes recursive row-security checks when adding a product to a store.
@@ -18,6 +18,7 @@ Many companies can use one deployment: each company has one admin and its own se
    `migration-014.sql` enables cache-safe profile picture replacements. Run it on existing databases before changing a profile picture.
    `migration-015.sql` lets a store reuse an invoice/sales number only with the same customer name.
    `migration-016.sql` lets managers undo their own supply records.
+   `migration-017.sql` adds product barcodes; `migration-018.sql` adds sales, invoices, payments, supply tracking and receipts; `migration-019.sql` adds invoice corrections/deletion and custom receipt branding.
    Every admin tab shows "permission denied"? Run `repair.sql` once, then reload. (On an older database run `repair.sql` first, then `migration-007.sql`.)
 3. Authentication > Providers: keep **Email** on and turn on **Confirm email**. Optional: turn on **Google**.
 4. Authentication > Policies: minimum password length 8, require lower case, upper case, digits and symbols.

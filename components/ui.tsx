@@ -2,14 +2,25 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import type { Level } from '@/lib/data'
 
-export function Modal({ open, title, onClose, wide, children }: { open: boolean; title: string; onClose: () => void; wide?: boolean; children: ReactNode }) {
+export function Modal({ open, title, onClose, wide, footerClose, children }: { open: boolean; title: string; onClose: () => void; wide?: boolean; footerClose?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const d = ref.current; if (!d) return
     if (open && !d.open) d.showModal()
     if (!open && d.open) d.close()
   }, [open])
-  return (<dialog ref={ref} className={wide ? 'wide' : ''} onClose={onClose}><h2>{title}</h2>{open && children}</dialog>)
+  return (
+    <dialog ref={ref} className={wide ? 'wide' : ''} onClose={onClose} aria-label={title}>
+      <div className="modal-head">
+        <h2>{title}</h2>
+        <button type="button" className="iconbtn modal-close" onClick={onClose} aria-label={`Close ${title}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+      {open && children}
+      {open && footerClose ? <div className="mfoot"><button type="button" className="btn ghost" onClick={onClose}>Close</button></div> : null}
+    </dialog>
+  )
 }
 
 function ConfirmBody({ text, label, onClose, onConfirm }: { text: string; label: string; onClose: () => void; onConfirm: () => Promise<string> }) {
