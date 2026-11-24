@@ -5,9 +5,9 @@ import { csv, download, friendly, localDay, q, toast } from '@/lib/data'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { DangerBox, TabHead } from './shared'
 
-const TABLES = ['stores', 'products', 'supplies', 'sheet_rows', 'losses', 'gifts', 'reports', 'activity_log'] as const
+const TABLES = ['stores', 'products', 'supplies', 'sheet_rows', 'losses', 'gifts', 'customers', 'invoices', 'invoice_items', 'payments', 'invoice_supply_updates', 'receipts', 'reports', 'activity_log'] as const
 const FORMAT = 'stockroom-backup-1'
-const LABELS: Record<string, string> = { stores: 'stores', products: 'products', supplies: 'supplies', sheet_rows: 'sheet entries', losses: 'damaged or missing entries', gifts: 'gifts', reports: 'reports', activity_log: 'activity records' }
+const LABELS: Record<string, string> = { stores: 'stores', products: 'products', supplies: 'supplies', sheet_rows: 'sheet entries', losses: 'damaged or missing entries', gifts: 'gifts', customers: 'customers', invoices: 'invoices', invoice_items: 'invoice products', payments: 'payments', invoice_supply_updates: 'supply updates', receipts: 'receipts', reports: 'reports', activity_log: 'activity records' }
 
 // The database returns at most 1000 rows per request, so read page by page.
 async function fetchAll(table: string) {
@@ -64,7 +64,7 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     onClose()
   }
   return (<>
-    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, gift, report and activity record of your company. Other companies are not affected. It cannot be undone.</p>
+    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, sale, invoice, payment, receipt, gift, report and activity record of your company. Other companies are not affected. It cannot be undone.</p>
     <label className="flex items-center gap-2">
       <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all store manager accounts of this company
     </label>
@@ -88,8 +88,8 @@ export default function Backup() {
     setBusy('backup'); setMsg('')
     try {
       const sb = supabaseBrowser()
-      const company = (await q(sb.from('companies').select('name').limit(1)))?.[0]?.name ?? ''
-      const out: any = { format: FORMAT, createdAt: new Date().toISOString(), company }
+      const company = (await q(sb.from('companies').select('name, settings').limit(1)))?.[0]
+      const out: any = { format: FORMAT, createdAt: new Date().toISOString(), company: company?.name ?? '', settings: company?.settings ?? {} }
       for (const t of TABLES) out[t] = await fetchAll(t)
       download(`marsandiis-backup-${localDay(new Date())}.json`, JSON.stringify(out))
       const when = new Date().toLocaleString()
@@ -104,8 +104,8 @@ export default function Backup() {
     try {
       const rows = await fetchAll('products')
       download(`products-${localDay(new Date())}.csv`, csv([
-        ['Name', 'Container no.', 'Date arrived', 'Unit', 'Total', 'Damaged at offload', 'Missing before offload', 'Net'],
-        ...rows.map((p) => [p.name, p.container_no, p.date_arrived ?? '', p.unit, p.total, p.damaged_offload, p.missing_before_offload, p.net]),
+        ['Name', 'Container no.', 'Date arrived', 'Unit', 'Default unit price (GMD)', 'Total', 'Damaged at offload', 'Missing before offload', 'Net'],
+        ...rows.map((p) => [p.name, p.container_no, p.date_arrived ?? '', p.unit, p.default_unit_price_gmd ?? 0, p.total, p.damaged_offload, p.missing_before_offload, p.net]),
       ]))
     } catch (e: any) { setMsg(e.message ?? 'Could not export the products.') }
     setBusy('')
@@ -125,7 +125,7 @@ export default function Backup() {
   return (<>
     <TabHead title="Backup & Restore" desc="Keep a copy of your company data, or start over." />
     <h3 className="m-0 text-[15px]">Download a backup</h3>
-    <p className="mb-3 mt-1 text-[13px] text-mute">{last ? `Last backup made on this device: ${last}` : 'No backup made on this device yet.'} A backup has your stores, products, supplies, entries, gifts, reports and activity. It does not contain passwords or accounts.</p>
+    <p className="mb-3 mt-1 text-[13px] text-mute">{last ? `Last backup made on this device: ${last}` : 'No backup made on this device yet.'} A backup has your company settings, stores, products, supplies, entries, customers, invoices, payments, receipts, reports and activity. It does not contain passwords or accounts.</p>
     <div className="flex flex-wrap gap-3">
       <button className="btn" disabled={!!busy} onClick={backup}>{busy === 'backup' ? 'Preparing…' : 'Download full backup'}</button>
       <button className="btn ghost" disabled={!!busy} onClick={products}>{busy === 'csv' ? 'Preparing…' : 'Export products (CSV)'}</button>
@@ -134,7 +134,7 @@ export default function Backup() {
     <p className="mb-3 mt-1 text-[13px] text-mute">Choose a backup file made here. Restoring replaces your current data.</p>
     <input ref={input} type="file" accept="application/json,.json" aria-label="Backup file" onChange={(e) => choose(e.target.files?.[0])} className="m-0 text-[13px]" />
     <p className="err mt-3" role="alert">{msg}</p>
-    <DangerBox title="Reset all data" text="Clears every store, product, supply, sheet, gift and report of your company.">
+    <DangerBox title="Reset all data" text="Clears every store, product, supply, sale, invoice, payment, receipt, sheet, gift and report of your company.">
       <button className="btn danger" onClick={() => setReset(true)}>Reset data</button>
     </DangerBox>
     <Modal open={!!picked} title="Restore backup" onClose={() => setPicked(null)}>{picked ? <RestoreBody file={picked.file} backup={picked.backup} onClose={() => setPicked(null)} /> : null}</Modal>

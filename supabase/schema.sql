@@ -1,5 +1,7 @@
 -- Marsandiis schema. Paste into the Supabase SQL editor and run once (new projects only).
--- Already ran an older version? Run the applicable migration-002.sql through migration-017.sql files.
+-- Already ran an older version? Run the applicable migration-002.sql through migration-019.sql files.
+-- migration-018.sql adds the sales, invoice, payment, supply-tracking and receipt tables.
+-- migration-019.sql adds invoice corrections/deletion and custom receipt branding.
 -- Every company has exactly one admin; all data is separated per company.
 
 create table companies (
@@ -24,6 +26,7 @@ create table profiles (
   email text,
   avatar_path text,
   disabled boolean not null default false,
+  prefs jsonb not null default '{}'::jsonb,
   role text not null default 'manager' check (role in ('admin','manager')),
   store_id uuid references stores on delete set null,
   company_id uuid references companies on delete set null,
@@ -37,6 +40,7 @@ create table products (
   date_arrived date not null default current_date,
   name text not null, container_no text not null, unit text not null default 'pieces',
   barcode text check (barcode is null or char_length(barcode) between 3 and 64),
+  default_unit_price_gmd numeric not null default 0 check (default_unit_price_gmd >= 0),
   total numeric not null check (total > 0),
   damaged_offload numeric not null default 0 check (damaged_offload >= 0),
   missing_before_offload numeric not null default 0 check (missing_before_offload >= 0),
@@ -381,5 +385,7 @@ begin
 end $$;
 grant execute on function update_my_avatar(text) to authenticated;
 
+-- After this base schema, new installations must run migration-017.sql through migration-019.sql.
+-- Sales, invoice, payment, supply-tracking and receipt tables are installed by migration-018.sql.
 -- Live updates
 alter publication supabase_realtime add table supplies, sheet_rows, losses, gifts, reports, activity_log, products, stores, profiles;

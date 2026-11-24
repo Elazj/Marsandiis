@@ -149,6 +149,18 @@
     @apply bg-black/45;
   }
 
+  .modal-head {
+    @apply mb-4 flex items-start justify-between gap-4;
+  }
+
+  .modal-head h2 {
+    @apply m-0 min-w-0;
+  }
+
+  .modal-close {
+    @apply h-8 w-8 rounded-lg text-mute;
+  }
+
   @media (max-width: 600px) {
     h1 {
       @apply text-[23px];
@@ -782,6 +794,216 @@
   }
 }
 
+/* Sales and receipts */
+.sales-filters {
+  @apply mb-4 grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.linkbtn {
+  @apply cursor-pointer border-0 bg-transparent p-0 text-left font-medium text-acc underline decoration-acc/30 underline-offset-2 hover:decoration-acc;
+}
+
+.compact-kpis {
+  @apply m-0 grid-cols-1;
+}
+
+.compact-kpis .kpi {
+  @apply shadow-none;
+}
+
+.receipt-preview {
+  @apply max-h-[65vh] overflow-auto rounded-xl bg-bg p-3 sm:p-5;
+}
+
+.receipt-paper {
+  --panel: #fff;
+  --ink: #0f2a3d;
+  --mute: #53708a;
+  --line: #cde2f2;
+  --acc: #1673bb;
+  --accsoft: #d6ebfb;
+  @apply mx-auto box-border border border-line bg-white p-6 text-ink shadow-panel;
+  color-scheme: light;
+  font-family: Arial, sans-serif;
+}
+
+.receipt-a4 {
+  width: min(186mm, 100%);
+  min-height: 270mm;
+}
+
+.receipt-58 {
+  width: min(58mm, 100%);
+  padding: 6mm 3mm;
+  font-size: 9px;
+}
+
+.receipt-80 {
+  width: min(80mm, 100%);
+  padding: 7mm 4mm;
+  font-size: 9px;
+}
+
+.receipt-head {
+  @apply flex items-center gap-3 border-b-2 border-acc pb-3;
+}
+
+.receipt-head img {
+  @apply h-12 w-12 object-contain;
+}
+
+.receipt-head h2 {
+  @apply m-0 font-sans text-[19px];
+}
+
+.receipt-head p {
+  @apply mb-0 mt-1 text-[10px] text-mute;
+}
+
+.receipt-title {
+  @apply my-[18px] text-center text-[18px] font-bold tracking-[1px];
+}
+
+.receipt-meta {
+  @apply mb-4 mt-0 grid grid-cols-2 gap-x-[18px] gap-y-[6px];
+}
+
+.receipt-meta div,
+.receipt-status div {
+  @apply flex justify-between gap-2;
+}
+
+.receipt-meta dt,
+.receipt-status dt {
+  @apply text-mute;
+}
+
+.receipt-meta dd,
+.receipt-status dd {
+  @apply m-0 text-right font-semibold;
+}
+
+.receipt-items {
+  @apply w-full border-collapse text-[11px];
+}
+
+.receipt-items th,
+.receipt-items td {
+  @apply border-b border-line px-1 py-[7px] text-left align-top;
+}
+
+.receipt-items th {
+  @apply text-mute;
+}
+
+.receipt-totals {
+  @apply mb-4 ml-auto mt-4 w-[min(320px,100%)];
+}
+
+.receipt-totals div {
+  @apply flex justify-between gap-4 py-1;
+}
+
+.receipt-status {
+  @apply mb-0 mt-0 border-t border-line pt-2.5;
+}
+
+.receipt-status div {
+  @apply py-[3px];
+}
+
+.receipt-payment-callout {
+  @apply mb-3 mt-3 border-l-4 border-acc bg-accsoft p-3;
+}
+
+.receipt-payment-callout div {
+  @apply flex justify-between gap-3;
+}
+
+.receipt-payment-callout b {
+  @apply text-[15px];
+}
+
+.receipt-payment-callout p {
+  @apply mb-0 mt-2 text-[10px];
+}
+
+.receipt-note {
+  @apply text-[10px] text-mute;
+}
+
+.receipt-foot {
+  @apply mt-[22px] border-t border-line pt-3 text-center font-semibold;
+}
+
+.receipt-foot span {
+  @apply mt-[5px] block text-[9px] font-normal text-mute;
+}
+
+.receipt-58 .receipt-head img,
+.receipt-80 .receipt-head img {
+  @apply h-8 w-8;
+}
+
+.receipt-58 .receipt-head,
+.receipt-80 .receipt-head {
+  @apply gap-[7px];
+}
+
+.receipt-58 .receipt-head h2,
+.receipt-80 .receipt-head h2 {
+  @apply text-[12px];
+}
+
+.receipt-58 .receipt-head p,
+.receipt-80 .receipt-head p {
+  @apply text-[6px];
+}
+
+.receipt-58 .receipt-title,
+.receipt-80 .receipt-title {
+  @apply my-3 text-[12px];
+}
+
+.receipt-58 .receipt-meta,
+.receipt-80 .receipt-meta {
+  @apply grid-cols-1 text-[8px];
+}
+
+.receipt-58 .receipt-items,
+.receipt-80 .receipt-items {
+  @apply text-[8px];
+}
+
+.receipt-58 .receipt-items th,
+.receipt-58 .receipt-items td,
+.receipt-80 .receipt-items th,
+.receipt-80 .receipt-items td {
+  @apply px-0.5 py-[5px];
+}
+
+.receipt-58 .receipt-items th:nth-child(3),
+.receipt-58 .receipt-items td:nth-child(3),
+.receipt-80 .receipt-items th:nth-child(3),
+.receipt-80 .receipt-items td:nth-child(3) {
+  @apply hidden;
+}
+
+.receipt-58 .receipt-totals,
+.receipt-80 .receipt-totals {
+  @apply w-full text-[9px];
+}
+
+.receipt-58 .receipt-status,
+.receipt-80 .receipt-status {
+  @apply text-[8px];
+}
+
+.receipt-58 .receipt-foot,
+.receipt-80 .receipt-foot {
+  @apply text-[8px];
+}
+
 /* ---- Marketing surfaces (landing + auth) ---- */
 /* Fixed brand navy, independent of the app's light/dark theme. Values come from the app palette. */
 .lp-navy {
@@ -879,4 +1101,41 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--acc);
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  body:has(.report-print-area) * {
+    visibility: hidden;
+  }
+
+  body:has(.report-print-area) .report-print-area,
+  body:has(.report-print-area) .report-print-area * {
+    visibility: visible;
+  }
+
+  .report-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    color: #0f2a3d;
+  }
+
+  .report-print-area .btns {
+    display: none !important;
+  }
+
+  .report-print-area .panel {
+    break-inside: avoid;
+    box-shadow: none;
+    background: #fff !important;
+  }
 }
