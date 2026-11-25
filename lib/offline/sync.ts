@@ -60,6 +60,11 @@ export function heldQty(items: OutboxItem[], supplyId: string) {
   return pendingFor(items, supplyId).reduce((n, x) => n + Number(x.payload.quantity ?? 0), 0)
 }
 
+export function heldInvoiceQty(items: OutboxItem[], invoiceItemId: string) {
+  return items.filter((x) => x.kind === 'sheet_row' && x.payload.invoiceItemId === invoiceItemId && (x.status === 'pending' || x.status === 'syncing'))
+    .reduce((n, x) => n + Number(x.payload.quantity ?? 0), 0)
+}
+
 export async function syncOutbox() {
   if (!isOnline()) return
   if (gate) return gate
@@ -84,16 +89,18 @@ async function pushOne(item: OutboxItem): Promise<'ok' | 'conflict' | 'offline'>
       const { error } = await sb.rpc('start_sheet', { p_supply: item.supplyId })
       if (error) return fail(item, error.message, error.code)
     } else if (item.kind === 'sheet_row') {
-      const hit = await insertWithIdempotency('sheet_rows', {
-        supply_id: item.supplyId,
-        customer: item.payload.customer,
-        supply_ref: item.payload.supply_ref,
-        quantity: item.payload.quantity,
-        client_id: item.id,
-        created_at: item.createdAt,
+      if (!item.payload.invoiceId || !item.payload.invoiceItemId) {
+        return conflict(item, 'gone', 'This queued supply was saved before invoice linking. Discard it and record the supply again from an admin invoice.')
+      }
+      const { error } = await sb.rpc('record_manager_supply', {
+        p_supply: item.supplyId,
+        p_invoice: item.payload.invoiceId,
+        p_item: item.payload.invoiceItemId,
+        p_quantity: item.payload.quantity,
+        p_client_id: item.id,
+        p_created_at: item.createdAt,
       })
-      if (hit === 'offline') return 'offline'
-      if (hit !== 'ok') return interpret(item, hit)
+      if (error) return net(error.message) ? fail(item, error.message, error.code) : interpret(item, { message: error.message, code: error.code })
     } else if (item.kind === 'gift') {
       const hit = await insertWithIdempotency('gifts', {
         supply_id: item.supplyId,
@@ -127,7 +134,7 @@ async function pushOne(item: OutboxItem): Promise<'ok' | 'conflict' | 'offline'>
   }
 }
 
-async function insertWithIdempotency(table: 'sheet_rows' | 'losses' | 'gifts', body: Record<string, unknown>): Promise<'ok' | { message: string; code?: string } | 'offline'> {
+async function insertWithIdempotency(table: 'losses' | 'gifts', body: Record<string, unknown>): Promise<'ok' | { message: string; code?: string } | 'offline'> {
   const sb = supabaseBrowser()
   let { error } = await sb.from(table).insert(body)
   if (error && /client_id|schema cache|column/i.test(error.message)) {
@@ -144,8 +151,11 @@ async function insertWithIdempotency(table: 'sheet_rows' | 'losses' | 'gifts', b
 }
 
 function interpret(item: OutboxItem, hit: { message: string; code?: string }) {
+  const invoiceLeft = hit.message.match(/Only\s+([\d.]+)\s+left on invoice/i)
+  if (invoiceLeft) return conflict(item, 'overdraw', `Only ${invoiceLeft[1]} left on this invoice now. Another supply used the pending quantity while this one was waiting.`, Number(invoiceLeft[1]))
   const left = hit.message.match(/Only\s+([\d.]+)\s+left/i)
   if (left) return conflict(item, 'overdraw', `Only ${left[1]} left in the store now. Another entry used stock while this one was waiting.`, Number(left[1]))
+  if (/invoice item not found|invoice not found|different product|not created by a company admin/i.test(hit.message)) return conflict(item, 'gone', 'This invoice is no longer available for the product. Ask the admin to check the sale.')
   if (/not found|0 rows|does not exist|foreign/i.test(hit.message)) return conflict(item, 'gone', 'This product is no longer assigned to the store.')
   if (/jwt|auth|sign in|not authenticated/i.test(hit.message)) return conflict(item, 'auth', 'Sign in again to sync this entry.')
   return fail(item, hit.message, hit.code)
@@ -195,7 +205,7 @@ export function overlaySheet(d: any, items: OutboxItem[]) {
 }
 
 function ghostRow(x: OutboxItem) {
-  return { id: x.id, supply_id: x.supplyId, customer: x.payload.customer, supply_ref: x.payload.supply_ref, quantity: x.payload.quantity, created_at: x.createdAt, pending: x.status !== 'conflict', profiles: { full_name: x.byName }, conflict: x.conflict }
+  return { id: x.id, supply_id: x.supplyId, invoice_id: x.payload.invoiceId ?? null, invoice_item_id: x.payload.invoiceItemId ?? null, customer: x.payload.customer, supply_ref: x.payload.supply_ref, quantity: x.payload.quantity, created_at: x.createdAt, pending: x.status !== 'conflict', profiles: { full_name: x.byName }, conflict: x.conflict }
 }
 function ghostGift(x: OutboxItem) {
   return { id: x.id, supply_id: x.supplyId, recipient: x.payload.recipient, quantity: x.payload.quantity, note: x.payload.note, created_at: x.createdAt, pending: x.status !== 'conflict', profiles: { full_name: x.byName }, conflict: x.conflict }

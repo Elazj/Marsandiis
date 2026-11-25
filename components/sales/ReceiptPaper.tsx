@@ -23,7 +23,7 @@ export function ReceiptPaper({ snapshot, format }: { snapshot: ReceiptSnapshot; 
     </dl>
 
     {payment ? <section className="receipt-payment-callout">
-      <div><span>Amount received</span><b>{money(payment.amount, invoice.currency)}</b></div>
+      <div><span>Amount paid</span><b>{money(payment.amount, invoice.currency)}</b></div>
       <div><span>Balance after payment</span><b>{money(payment.balanceAfter, invoice.currency)}</b></div>
       <p>Paid on {new Date(payment.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} by {payment.method}</p>
       {payment.note ? <p>Note: {payment.note}</p> : null}

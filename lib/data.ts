@@ -20,7 +20,12 @@ export const localDay = (d: string | Date) => new Date(d).toLocaleDateString('en
 export const fmtDay = (d?: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString([], { dateStyle: 'medium' }) : '-')
 
 export const friendly = (m: string) =>
-  /(invoices|customers|payments|receipts|invoice_items|invoice_summary|create_sales_invoice|default_unit_price_gmd)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-018.sql in the Supabase SQL editor, then reload.'
+  /(product_stock|assert_product_sale_capacity|lock_saleable_stock|validate_invoice_item_stock)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-024.sql in the Supabase SQL editor, then reload.'
+  : /(record_payroll_batch|edit_salary_payment|employee_count|cashInVault|get_finance_summary)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-023.sql in the Supabase SQL editor, then reload.'
+  : /(list_manager_invoice_items|record_manager_supply|undo_manager_supply|sheet_rows.*invoice|invoice_item_id)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-022.sql in the Supabase SQL editor, then reload.'
+  : /(bank_deposits|record_bank_deposit|void_bank_deposit)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-021.sql in the Supabase SQL editor, then reload.'
+  : /(salary_payments|misc_expenses|record_salary_payment|void_salary_payment|record_misc_expense|void_misc_expense|get_finance_summary)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-020.sql in the Supabase SQL editor, then reload.'
+  : /(invoices|customers|payments|receipts|invoice_items|invoice_summary|create_sales_invoice|default_unit_price_gmd)/i.test(m) && /does not exist|schema cache|could not find|column|function/i.test(m) ? 'The database needs one update: run supabase/migration-018.sql in the Supabase SQL editor, then reload.'
   : /barcode/i.test(m) && /does not exist|schema cache|could not find|column/i.test(m) ? 'The database needs one update: run supabase/migration-017.sql in the Supabase SQL editor, then reload.'
   : /(gifts|companies|company_id|date_arrived|supply_balance|gifted)/i.test(m) && /does not exist|schema cache|could not find|column/i.test(m) ? 'The database needs one update: run supabase/migration-007.sql in the Supabase SQL editor, then reload.'
   : /failed to fetch|networkerror|load failed/i.test(m) ? 'Cannot reach the server. Check your internet connection and that your Supabase project is running.'
@@ -54,7 +59,7 @@ export async function remove(table: string, id: string) {
 }
 
 // Loads data now and again whenever anyone changes the listed tables (live updates).
-export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[], cacheKey?: string, refreshMs = 0) {
+export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: string[], cacheKey?: string, refreshMs = 0, cache = true) {
   const path = usePathname()
   const [data, setData] = useState<T | null>(null)
   const [err, setErr] = useState('')
@@ -66,13 +71,13 @@ export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: str
   const reload = useCallback(async () => {
     const id = ++requestId.current
     try {
-      const hit = await cacheLive(storeKey, () => ref.current(supabaseBrowser()))
+      const hit = cache ? await cacheLive(storeKey, () => ref.current(supabaseBrowser())) : { data: await ref.current(supabaseBrowser()), fromCache: false }
       if (id !== requestId.current) return
       setData(hit.data); setFromCache(hit.fromCache); setErr('')
     } catch (e: any) {
       if (id === requestId.current) setErr(friendly(e?.message ?? 'Could not load data'))
     }
-  }, [storeKey])
+  }, [storeKey, cache])
   useEffect(() => {
     reload()
     const sb = supabaseBrowser(); let t: any
@@ -84,12 +89,15 @@ export function useLive<T>(load: (sb: SupabaseClient) => Promise<T>, tables: str
     }, refreshMs) : undefined
     const online = () => { void reload() }
     const visible = () => { if (document.visibilityState === 'visible') void reload() }
+    const outbox = () => { if (navigator.onLine) { clearTimeout(t); t = window.setTimeout(reload, 100) } }
     window.addEventListener('online', online)
+    window.addEventListener('stockroom-outbox', outbox)
     document.addEventListener('visibilitychange', visible)
     return () => {
       clearTimeout(t)
       if (poll !== undefined) window.clearInterval(poll)
       window.removeEventListener('online', online)
+      window.removeEventListener('stockroom-outbox', outbox)
       document.removeEventListener('visibilitychange', visible)
       requestId.current++
       sb.removeChannel(ch)
@@ -160,8 +168,8 @@ export function downloadSheet(d: any) {
   const s = d.supply, p = s.products, b = d.bal
   const rows: (string | number)[][] = [
     ['Product', p.name], ['Container number', p.container_no], ['Store', s.stores.name], ['Unit', p.unit], ['Quantity assigned to this store', s.quantity], [],
-    ['Date', 'Customer', 'Supply ID', 'Quantity', 'Entered by'],
-    ...[...d.rows].reverse().map((r: any) => [fmtT(r.created_at), r.customer, r.supply_ref, r.quantity, r.profiles?.full_name ?? '']), [],
+    ['Date', 'Customer', 'Sales / invoice number', 'Quantity', 'Invoice supplied', 'Invoice pending', 'Invoice supply status', 'Entered by'],
+    ...[...d.rows].reverse().map((r: any) => [fmtT(r.created_at), r.customer, r.supply_ref, r.quantity, r.invoice_supplied ?? '', r.invoice_pending ?? '', r.invoice_status ?? '', r.profiles?.full_name ?? '']), [],
     ['Damaged or missing during supply'], ['Date', 'Type', 'Quantity', 'Note', 'Entered by'],
     ...[...d.losses].reverse().map((l: any) => [fmtT(l.created_at), l.kind, l.quantity, l.note ?? '', l.profiles?.full_name ?? '']), [],
     ['Gifts'], ['Date', 'Gifted to', 'Quantity', 'Note', 'Entered by'],

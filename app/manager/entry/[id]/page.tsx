@@ -5,9 +5,11 @@ import { useParams } from 'next/navigation'
 import { Hd } from '@/components/ui'
 import { useSettings } from '@/components/SettingsProvider'
 import { SheetTables } from '@/components/Sheet'
+import { ManagerInvoiceInput } from '@/components/sales/ManagerInvoiceInput'
 import { downloadSheet, fmtT, friendly, loadSheet, logAct, qn, SHEET_LIVE, toast, useLive } from '@/lib/data'
+import { matchManagerInvoice, recordManagerSupplyRequest, undoManagerSupply, useManagerInvoiceItems } from '@/lib/sales'
 import { insertEntry, recordOrQueue } from '@/lib/offline/record'
-import { discardItem, overlaySheet } from '@/lib/offline/sync'
+import { discardItem, heldInvoiceQty, overlaySheet } from '@/lib/offline/sync'
 import { useOnline, useOutbox } from '@/lib/offline/useOutbox'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
@@ -17,9 +19,11 @@ export default function SheetPage() {
   const online = useOnline()
   const { items } = useOutbox(id)
   const { data: raw, err, reload } = useLive(async (sb) => loadSheet(sb, id), SHEET_LIVE)
+  const { data: invoiceData, err: invoiceErr, reload: reloadInvoices } = useManagerInvoiceItems(id)
+  const invoiceItems = invoiceData ?? []
   const [userId, setUserId] = useState('')
   const [userError, setUserError] = useState('')
-  const [r, setR] = useState({ cust: '', ref: '', qty: '' })
+  const [r, setR] = useState({ invoiceRef: '', qty: '' })
   const [l, setL] = useState({ kind: 'damaged' as 'damaged' | 'missing', qty: '', note: '' })
   const [re, setRe] = useState('')
   const [le, setLe] = useState('')
@@ -43,6 +47,15 @@ export default function SheetPage() {
   if (!raw) return <p className="mute">Loading…</p>
   const d = overlaySheet(raw, items)
   const s = d.supply, b = d.bal, p = s.products, rem = Number(b.remaining)
+  const selectedInvoice = matchManagerInvoice(invoiceItems, r.invoiceRef)
+  const invoiceHeld = selectedInvoice ? heldInvoiceQty(items, selectedInvoice.invoice_item_id) : 0
+  const invoiceLeft = Math.max(0, Number(selectedInvoice?.quantity_pending ?? 0) - invoiceHeld)
+  const takeLimit = Math.min(rem, invoiceLeft)
+  const invoiceMap = new Map(invoiceItems.map((item) => [item.invoice_item_id, item]))
+  const sheet = { ...d, invoiceItems, rows: d.rows.map((row: any) => {
+    const item = invoiceMap.get(row.invoice_item_id)
+    return { ...row, invoice_supplied: item?.quantity_supplied, invoice_pending: item?.quantity_pending, invoice_status: item?.supply_status }
+  }) }
 
   async function start() {
     const hit = await recordOrQueue({
@@ -54,20 +67,26 @@ export default function SheetPage() {
     reload()
   }
   async function addRow() {
-    const qty = qn(r.qty), cust = r.cust.trim(), ref = r.ref.trim()
-    if (!cust || !ref) return setRe('Enter the customer name and the supply ID.')
+    const qty = qn(r.qty)
+    if (!selectedInvoice) {
+      if (!r.invoiceRef.trim()) setRe('Enter the sales or invoice number created by the admin.')
+      return
+    }
     if (!qty) return setRe('Enter a quantity above zero.')
     if (qty > rem) return setRe(`Only ${rem} ${p.unit} left in the store.`)
+    if (qty > invoiceLeft) return setRe(`Only ${invoiceLeft} ${p.unit} left to supply on invoice ${selectedInvoice.invoice_no}.`)
     setRe('')
     const clientId = crypto.randomUUID()
+    const cust = selectedInvoice.customer_name, ref = selectedInvoice.invoice_no
+    const log = `${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores?.name ?? 'the store'}`
     const hit = await recordOrQueue({
-      id: clientId, kind: 'sheet_row', supplyId: id, log: `${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores?.name ?? 'the store'}`,
-      payload: { customer: cust, supply_ref: ref, quantity: qty, productName: p.name },
-    }, () => insertEntry('sheet_rows', { supply_id: id, customer: cust, supply_ref: ref, quantity: qty, client_id: clientId }))
+      id: clientId, kind: 'sheet_row', supplyId: id, log,
+      payload: { customer: cust, supply_ref: ref, invoiceId: selectedInvoice.invoice_id, invoiceItemId: selectedInvoice.invoice_item_id, quantity: qty, productName: p.name },
+    }, () => recordManagerSupplyRequest({ supplyId: id, invoiceId: selectedInvoice.invoice_id, invoiceItemId: selectedInvoice.invoice_item_id, quantity: qty, clientId }))
     if (!hit.ok) return setRe(hit.message)
-    if (hit.queued) toast('Saved on this device. It will sync when you are back online.')
-    else { await logAct(`${p.name}: supplied ${qty} ${p.unit} to ${cust} (${ref}) from ${s.stores?.name ?? 'the store'}`); toast('Added to the sheet') }
-    setR({ cust: '', ref: '', qty: '' }); reload()
+    if (hit.queued) toast('Saved on this device. The invoice quantity will be checked again when it syncs.')
+    else { await logAct(log); toast('Supply recorded and invoice totals updated') }
+    setR({ invoiceRef: '', qty: '' }); reload(); void reloadInvoices()
   }
   async function addLoss() {
     const qty = qn(l.qty)
@@ -112,19 +131,15 @@ export default function SheetPage() {
       await discardItem(row.id)
     } else {
       if (!userId) return userError || 'Could not verify your account.'
-      const sb = supabaseBrowser()
-      const { data: existing, error: lookupError } = await sb.from('sheet_rows').select('id')
-        .eq('id', row.id).eq('entered_by', userId).maybeSingle()
-      if (lookupError) return friendly(lookupError.message)
-      if (!existing) return 'This record is no longer available to undo.'
-      const { data, error } = await sb.from('sheet_rows').delete()
-        .eq('id', row.id).eq('entered_by', userId).select('id').maybeSingle()
-      if (error) return friendly(error.message)
-      if (!data) return 'The database did not allow this undo. If this is an existing database, run supabase/migration-016.sql in the Supabase SQL editor, then try again.'
-      await logAct(`Undid supply record ${row.supply_ref} for ${row.customer}`)
+      try {
+        const result = await undoManagerSupply(row.id)
+        await logAct(`Undid supply record ${result.invoice_no ?? row.supply_ref} for ${row.customer}`)
+      } catch (error) {
+        return friendly(error instanceof Error ? error.message : 'Could not undo this supply record.')
+      }
     }
-    reload()
-    toast('Record undone and quantity restored.')
+    reload(); void reloadInvoices()
+    toast('Record undone. Store stock and invoice supplied totals were restored.')
     return ''
   }
 
@@ -132,7 +147,7 @@ export default function SheetPage() {
     <Hd title={`Sheet: ${p.name}`} sub={`${s.stores?.name ?? 'Your store'}${s.sheet_started_at ? ', started ' + fmtT(s.sheet_started_at) : ''}${online ? '' : ' · offline'}`}>
       <Link className="btn ghost sm no-underline" href="/manager/entry">All sheets</Link>
       <Link className="btn ghost sm no-underline" href={`/manager/scan?supply=${id}`}>Scan out</Link>
-      {s.sheet_started_at ? <button className="btn sm" onClick={() => downloadSheet(d)}>Download sheet</button> : null}
+      {s.sheet_started_at ? <button className="btn sm" onClick={() => downloadSheet(sheet)}>Download sheet</button> : null}
     </Hd>
     <div className="panel strip">
       {([[b.assigned, 'Assigned to this store'], [b.supplied, 'Supplied to customers'], [b.gifted ?? 0, 'Gifted'], [b.damaged_in_supply, 'Damaged in supply'], [b.missing_in_supply, 'Missing in supply'], [b.remaining, 'Remaining in store']] as [number, string][]).map(([v, t]) => <div key={t}><b>{v}</b><span>{t}</span></div>)}
@@ -142,10 +157,17 @@ export default function SheetPage() {
     ) : (<>
       <div className="content-grid">
         <div className="panel"><h2>Record a supply</h2>
-          {!online ? <p className="mute mt-0">You are offline. This entry stays on this device and sends later. If the store no longer has enough stock, you will be asked what to do.</p> : null}
-          <label>Customer name<input value={r.cust} maxLength={80} onChange={(e) => setR({ ...r, cust: e.target.value })} placeholder="e.g., Alex Johnson" /></label>
-          <label>Supply ID (invoice or sales number)<input value={r.ref} maxLength={40} onChange={(e) => setR({ ...r, ref: e.target.value })} placeholder="e.g., INV-1003" /></label>
-          <label>Quantity supplied ({p.unit})<input type="number" min="0" step="any" value={r.qty} onChange={(e) => setR({ ...r, qty: e.target.value })} placeholder="e.g., 10" /></label>
+          {!online ? <p className="mute mt-0">You are offline. This entry stays on this device and sends later. Store stock and the invoice pending quantity are checked again before it syncs.</p> : null}
+          <ManagerInvoiceInput
+            items={invoiceItems}
+            value={r.invoiceRef}
+            onChange={(invoiceRef) => { setR({ ...r, invoiceRef }); setRe('') }}
+            remaining={takeLimit}
+            unit={p.unit}
+            loading={invoiceData === null && !invoiceErr}
+            error={invoiceErr}
+          />
+          <label>Quantity supplied ({p.unit})<input type="number" min="0" max={takeLimit || undefined} step="any" value={r.qty} onChange={(e) => setR({ ...r, qty: e.target.value })} placeholder="e.g., 10" /></label>
           <p className="err" role="alert">{re}</p><button className="btn" onClick={addRow}>Add to sheet</button></div>
         <div className="panel"><h2>Record damaged or missing</h2>
           <label>Type<select value={l.kind} onChange={(e) => setL({ ...l, kind: e.target.value as 'damaged' | 'missing' })}><option value="damaged">Damaged during supply</option><option value="missing">Missing during supply</option></select></label>
@@ -161,7 +183,7 @@ export default function SheetPage() {
       </div>
       <div className="panel">
         {userError ? <p className="err" role="alert">{userError}</p> : null}
-        <SheetTables rows={d.rows} losses={d.losses} gifts={d.gifts} canUndo={canUndoRow} onUndo={undoRow} />
+        <SheetTables rows={sheet.rows} losses={d.losses} gifts={d.gifts} invoiceItems={invoiceItems} canUndo={canUndoRow} onUndo={undoRow} />
       </div>
     </>)}
   </>)

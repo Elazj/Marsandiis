@@ -77,8 +77,8 @@ export function InvoiceDetail({ invoiceId, onClose, onChanged, onReceipt, produc
         </tbody></table></div> : <p className="mute">No payments recorded.</p>}
 
         <h3 className="mt-5 text-[15px]">Supply history</h3>
-        {data.supplyUpdates.length ? <div className="wrap"><table><thead><tr><th>Date</th><th>Product</th><th className="n">Added</th><th className="n">Supplied after</th><th>By</th><th>Note</th></tr></thead><tbody>
-          {data.supplyUpdates.map((update) => <tr key={update.id}><td>{fmtT(update.created_at)}</td><td>{data.items.find((row) => row.id === update.invoice_item_id)?.products?.name ?? 'Product'}</td><td className="n">{update.quantity}</td><td className="n">{update.supplied_after}</td><td>{update.profiles?.full_name ?? 'Admin'}</td><td>{update.note || '—'}</td></tr>)}
+        {data.supplyUpdates.length ? <div className="wrap"><table><thead><tr><th>Date</th><th>Product</th><th>Change</th><th className="n">Quantity</th><th className="n">Supplied after</th><th>By</th><th>Note</th></tr></thead><tbody>
+          {data.supplyUpdates.map((update) => <tr key={update.id}><td>{fmtT(update.created_at)}</td><td>{data.items.find((row) => row.id === update.invoice_item_id)?.products?.name ?? 'Product'}</td><td>{update.change_kind === 'reversal' ? 'Reversed' : 'Added'}</td><td className="n">{update.quantity}</td><td className="n">{update.supplied_after}</td><td>{update.profiles?.full_name ?? 'Admin'}</td><td>{update.note || '—'}</td></tr>)}
         </tbody></table></div> : <p className="mute">No supplies recorded.</p>}
       </> : null}
     </Modal>

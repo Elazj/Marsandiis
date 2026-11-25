@@ -1,7 +1,12 @@
 -- Marsandiis schema. Paste into the Supabase SQL editor and run once (new projects only).
--- Already ran an older version? Run the applicable migration-002.sql through migration-019.sql files.
+-- Already ran an older version? Run the applicable migration-002.sql through migration-024.sql files.
 -- migration-018.sql adds the sales, invoice, payment, supply-tracking and receipt tables.
 -- migration-019.sql adds invoice corrections/deletion and custom receipt branding.
+-- migration-020.sql adds salary payments, miscellaneous expenses and period cash-flow totals.
+-- migration-021.sql adds bank deposits and deposit totals without treating transfers as income or expenses.
+-- migration-022.sql links manager supplies to admin-created invoice items and adds atomic undo.
+-- migration-023.sql adds cumulative vault balances and editable salary batches with employee counts.
+-- migration-024.sql reserves product stock on invoice creation and blocks overselling.
 -- Every company has exactly one admin; all data is separated per company.
 
 create table companies (

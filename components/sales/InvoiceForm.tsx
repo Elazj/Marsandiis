@@ -7,6 +7,7 @@ import { createSalesInvoice, PAYMENT_METHODS, updateSalesInvoice, type CustomerR
 
 type Line = { key: string; id?: string; product_id: string; quantity: string; unit_price_gmd: string; supplied?: number }
 const blankLine = (): Line => ({ key: crypto.randomUUID(), product_id: '', quantity: '1', unit_price_gmd: '' })
+const stockText = (value: number) => Number(value.toFixed(3)).toLocaleString()
 
 export function InvoiceForm({ open, onClose, onSaved, products, customers, rate, suggestedInvoiceNo, invoice, invoiceItems }: {
   open: boolean
@@ -42,6 +43,23 @@ export function InvoiceForm({ open, onClose, onSaved, products, customers, rate,
   const totalGmd = useMemo(() => lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_price_gmd) || 0), 0), [lines])
   const total = totalGmd * factor
   const initialPayment = editing ? 0 : Number(paid) || 0
+  const originalItems = useMemo(() => new Map((invoiceItems ?? []).map((item) => [item.id, item])), [invoiceItems])
+
+  function originalQuantity(line: Line, productId: string) {
+    const original = line.id ? originalItems.get(line.id) : undefined
+    return original?.product_id === productId ? Number(original.quantity_sold) || 0 : 0
+  }
+
+  function stockBeforeLine(line: Line, product?: ProductRow) {
+    if (!product) return 0
+    const original = originalQuantity(line, product.id)
+    return Math.max(original, (Number(product.available) || 0) + original)
+  }
+
+  const stockExceeded = lines.some((line) => {
+    const product = products.find((row) => row.id === line.product_id)
+    return !!product && Number(line.quantity) > stockBeforeLine(line, product) + 0.000001
+  })
 
   function updateLine(key: string, patch: Partial<Line>) {
     setLines((rows) => rows.map((row) => row.key === key ? { ...row, ...patch } : row))
@@ -55,16 +73,19 @@ export function InvoiceForm({ open, onClose, onSaved, products, customers, rate,
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     setErr('')
-    if (invoiceNo.trim().length < 2) return setErr('Enter an invoice number.')
+    if (invoiceNo.trim().length < 2) return setErr('Enter a sales or invoice number.')
     if (customer.trim().length < 2) return setErr('Enter or select a customer name.')
     if (currency === 'XOF' && rate <= 0) return setErr('The saved exchange rate on this invoice is invalid.')
     const items: NewInvoiceItem[] = []
     for (const line of lines) {
       const quantity = Number(line.quantity)
       const price = Number(line.unit_price_gmd)
-      if (!line.product_id) return setErr('Choose a product for every invoice line.')
+      const product = products.find((row) => row.id === line.product_id)
+      if (!line.product_id || !product) return setErr('Choose a product for every invoice line.')
       if (!(quantity > 0)) return setErr('Every product needs a quantity above zero.')
       if (Number(line.supplied) > quantity) return setErr('Quantity sold cannot be less than the quantity already supplied.')
+      const available = stockBeforeLine(line, product)
+      if (quantity > available + 0.000001) return setErr(`Only ${available} ${product.unit} of ${product.name} is available for this sale. Add more stock in Products.`)
       if (!(price >= 0) || !isFinite(price)) return setErr('Every product needs a valid unit price.')
       if (items.some((item) => item.product_id === line.product_id)) return setErr('A product can appear only once on an invoice.')
       items.push({ ...(line.id ? { id: line.id } : {}), product_id: line.product_id, quantity, unit_price_gmd: price })
@@ -89,10 +110,12 @@ export function InvoiceForm({ open, onClose, onSaved, products, customers, rate,
     }
   }
 
-  return <Modal open={open} title={editing ? 'Edit sales invoice' : 'Create sales invoice'} onClose={onClose} wide>
+  return <Modal open={open} title={editing ? 'Edit sale / invoice' : 'Create sale / invoice'} onClose={onClose} wide>
     <form onSubmit={submit}>
       <div className="grid gap-x-3 sm:grid-cols-2">
-        <label>Invoice number<input value={invoiceNo} onChange={(event) => setInvoiceNo(event.target.value)} maxLength={40} required /></label>
+        <label>Sales / invoice number<input value={invoiceNo} onChange={(event) => setInvoiceNo(event.target.value)} maxLength={40} required />
+          <span className="mt-1 block text-[11px] text-mute">Use a sales number for a cash sale paid in full. Use an invoice number when the customer will repay later.</span>
+        </label>
         <label>Invoice date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>
       </div>
       <label>Customer name<input list="sales-customers" value={customer} onChange={(event) => setCustomer(event.target.value)} maxLength={120} placeholder="Enter a new name or select an existing customer" required />
@@ -108,18 +131,25 @@ export function InvoiceForm({ open, onClose, onSaved, products, customers, rate,
         <h3 className="m-0 text-[15px]">Invoice products</h3>
         <button type="button" className="btn ghost sm" onClick={() => setLines((rows) => [...rows, blankLine()])}>Add product</button>
       </div>
+      <p className="note">Stock is reserved when the invoice is saved. When a product reaches zero, add more total stock in Products before selling it again.</p>
       {!products.length ? <p className="err">Create a product first, then return to record an invoice.</p> : null}
       <div className="flex flex-col gap-3">
         {lines.map((line, index) => {
           const product = products.find((row) => row.id === line.product_id)
           const lineTotal = (Number(line.quantity) || 0) * (Number(line.unit_price_gmd) || 0) * factor
           const supplied = Number(line.supplied) || 0
+          const available = stockBeforeLine(line, product)
+          const remaining = available - (Number(line.quantity) || 0)
+          const overStock = !!product && remaining < -0.000001
           return <div key={line.key} className="rounded-xl border border-line bg-bg p-3">
             <div className="grid items-end gap-2 sm:grid-cols-[1.5fr_.7fr_1fr_auto]">
               <label className="m-0">Product<select value={line.product_id} disabled={supplied > 0} onChange={(event) => pickProduct(line.key, event.target.value)} required>
-                <option value="">Choose product</option>{products.map((row) => <option key={row.id} value={row.id}>{row.name} ({row.unit})</option>)}
+                <option value="">Choose product</option>{products.map((row) => {
+                  const optionStock = stockBeforeLine(line, row)
+                  return <option key={row.id} value={row.id} disabled={optionStock <= 0}>{row.name} ({row.unit}) — {optionStock > 0 ? `${stockText(optionStock)} available` : 'out of stock'}</option>
+                })}
               </select></label>
-              <label className="m-0">Quantity<input type="number" min={supplied > 0 ? supplied : 0} step="any" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} required />
+              <label className="m-0">Quantity<input type="number" min={supplied > 0 ? supplied : 0} max={available} step="any" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} required />
                 {supplied > 0 ? <span className="mt-1 block text-[11px] text-mute">{supplied} already supplied</span> : null}
               </label>
               <label className="m-0">Unit price (GMD)<input type="number" min="0" step="any" value={line.unit_price_gmd} onChange={(event) => updateLine(line.key, { unit_price_gmd: event.target.value })} required />
@@ -127,6 +157,11 @@ export function InvoiceForm({ open, onClose, onSaved, products, customers, rate,
               </label>
               <button type="button" className="btn ghost sm mb-0.5" disabled={lines.length === 1 || supplied > 0} onClick={() => setLines((rows) => rows.filter((row) => row.key !== line.key))} aria-label={`Remove product line ${index + 1}`}>{supplied > 0 ? 'Supplied' : 'Remove'}</button>
             </div>
+            {product ? <p className={`mt-2 mb-0 text-[11px] ${overStock ? 'text-bad' : 'text-mute'}`}>
+              {overStock
+                ? `Only ${stockText(available)} ${product.unit} available. Add more stock in Products.`
+                : `${stockText(available)} ${product.unit} available · ${stockText(Math.max(0, remaining))} left after this sale`}
+            </p> : null}
             <div className="mt-2 text-right text-sm"><span className="text-mute">Line total: </span><b>{money(lineTotal, currency)}</b></div>
           </div>
         })}
@@ -139,7 +174,7 @@ export function InvoiceForm({ open, onClose, onSaved, products, customers, rate,
       </div>}
       <label>Invoice note (optional)<textarea value={note} maxLength={500} onChange={(event) => setNote(event.target.value)} rows={2} /></label>
       <p className="err" role="alert">{err}</p>
-      <div className="mfoot"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" disabled={busy || !products.length}>{busy ? editing ? 'Saving…' : 'Creating…' : editing ? 'Save changes' : 'Create invoice'}</button></div>
+      <div className="mfoot"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn" disabled={busy || !products.length || stockExceeded}>{busy ? editing ? 'Saving…' : 'Creating…' : editing ? 'Save changes' : 'Create invoice'}</button></div>
     </form>
   </Modal>
 }

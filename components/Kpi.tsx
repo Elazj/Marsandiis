@@ -10,6 +10,11 @@ const ICONS: Record<string, ReactNode> = {
   flag: <path d="M5 21V4M5 4h12l-2 4 2 4H5" />,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   gift: <><path d="M3 8h18v4H3zM5 12v8h14v-8M12 8v12" /><path d="M12 8S10.5 3.5 8 3.5a2.2 2.2 0 0 0 0 4.5M12 8s1.5-4.5 4-4.5a2.2 2.2 0 0 1 0 4.5" /></>,
+  finances: <><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9h.01M18 15h.01" /></>,
+  salary: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M16 7h5M18.5 4.5v5" /></>,
+  expense: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
+  out: <><path d="M12 4v16M4 12h16" /><circle cx="12" cy="12" r="9" /></>,
+  net: <><path d="M4 17l5-5 4 3 7-8" /><path d="M15 7h5v5" /></>,
 }
 
 export function Kpi({ icon, label, value, tone }: { icon: keyof typeof ICONS; label: string; value: ReactNode; tone?: 'warn' | 'bad' }) {
