@@ -162,7 +162,7 @@ export function receiptPdfBlob(snapshot: ReceiptSnapshot, format: ReceiptFormat)
   if (payment) {
     pdf.text('PAYMENT RECEIVED', pdf.thermal ? 8 : 10, true, pdf.margin, blue)
     pdf.y -= 20
-    pdf.row('Amount received', amount(payment.amount, invoice.currency), true, true)
+    pdf.row('Amount paid', amount(payment.amount, invoice.currency), true, true)
     pdf.row('Balance after payment', amount(payment.balanceAfter, invoice.currency), true)
     pdf.row('Payment method', payment.method)
     pdf.row('Payment date', new Date(payment.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))

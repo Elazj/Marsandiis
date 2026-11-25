@@ -5,9 +5,12 @@ import { useSearchParams } from 'next/navigation'
 import ScanCamera from '@/components/ScanCamera'
 import { Icon } from '@/components/icons'
 import { Confirm, Hd } from '@/components/ui'
+import { ManagerInvoiceInput } from '@/components/sales/ManagerInvoiceInput'
+import { StatusChip } from '@/components/sales/StatusChip'
 import { logAct, q, qn, toast, useLive } from '@/lib/data'
-import { insertEntry, recordOrQueue } from '@/lib/offline/record'
-import { heldQty } from '@/lib/offline/sync'
+import { matchManagerInvoice, recordManagerSupplyRequest, useManagerInvoiceItems } from '@/lib/sales'
+import { recordOrQueue } from '@/lib/offline/record'
+import { heldInvoiceQty, heldQty } from '@/lib/offline/sync'
 import { useOnline, useOutbox } from '@/lib/offline/useOutbox'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { cx } from '@/lib/tw'
@@ -32,8 +35,7 @@ function ScanOut() {
 
   const [phase, setPhase] = useState<'setup' | 'scan' | 'done'>('setup')
   const [supplyId, setSupplyId] = useState(preset)
-  const [cust, setCust] = useState('')
-  const [ref, setRef] = useState('')
+  const [invoiceRef, setInvoiceRef] = useState('')
   const [target, setTarget] = useState('')
   const [goal, setGoal] = useState(0)
   const [count, setCount] = useState(0)
@@ -50,6 +52,19 @@ function ScanOut() {
   const flashTimer = useRef(0)
   const audioRef = useRef<AudioContext | null>(null)
   const soundRef = useRef(sound); soundRef.current = sound
+  const B = new Map<string, any>((d?.bal ?? []).map((b: any) => [b.supply_id, b]))
+  const avail = (s: any) => Math.max(0, Number(B.get(s.id)?.remaining ?? s.quantity) - heldQty(items, s.id))
+  const candidates = (d?.supplies ?? []).filter((s: any) => avail(s) > 0)
+  const activeId = candidates.find((s: any) => s.id === supplyId)?.id ?? candidates[0]?.id ?? ''
+  const sel = d?.supplies.find((s: any) => s.id === activeId) ?? null
+  const p = sel?.products
+  const left = sel ? avail(sel) : 0
+  const { data: invoiceData, err: invoiceErr, reload: reloadInvoices } = useManagerInvoiceItems(activeId)
+  const invoiceItems = invoiceData ?? []
+  const selectedInvoice = matchManagerInvoice(invoiceItems, invoiceRef)
+  const invoiceHeld = selectedInvoice ? heldInvoiceQty(items, selectedInvoice.invoice_item_id) : 0
+  const invoiceLeft = Math.max(0, Number(selectedInvoice?.quantity_pending ?? 0) - invoiceHeld)
+  const takeLimit = Math.min(left, invoiceLeft)
 
   useEffect(() => { setSound(localStorage.getItem('stockroom-scan-sound') !== '0') }, [])
   useEffect(() => () => { window.clearTimeout(flashTimer.current); void audioRef.current?.close().catch(() => {}) }, [])
@@ -91,14 +106,6 @@ function ScanOut() {
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
 
-  const B = new Map<string, any>(d.bal.map((b: any) => [b.supply_id, b]))
-  const avail = (s: any) => Math.max(0, Number(B.get(s.id)?.remaining ?? s.quantity) - heldQty(items, s.id))
-  const candidates = d.supplies.filter((s: any) => avail(s) > 0)
-  const activeId = supplyId || candidates[0]?.id || ''
-  const sel = d.supplies.find((s: any) => s.id === activeId) ?? null
-  const p = sel?.products
-  const left = sel ? avail(sel) : 0
-
   function handleScan(raw: string) {
     if (phase !== 'scan' || !sel || !p) return
     const code = raw.trim()
@@ -129,12 +136,15 @@ function ScanOut() {
     if (!sel || !p) return setMsg('Choose a product to scan out.')
     if (!d.barcodeReady) return setMsg('The database needs one update: run supabase/migration-017.sql in the Supabase SQL editor, then reload.')
     if (!p.barcode) return setMsg(`${p.name} has no barcode yet. Ask your admin to add one on the Products page.`)
-    const c = cust.trim(), r = ref.trim(), t = qn(target)
-    if (!c) return setMsg('Enter the customer name.')
-    if (!r) return setMsg('Enter the supply ID (invoice or sales number).')
+    if (!selectedInvoice) {
+      if (!invoiceRef.trim()) setMsg('Enter the sales or invoice number created by the admin.')
+      return
+    }
+    const t = qn(target)
     if (!t) return setMsg('Enter how many items the customer is taking.')
     if (!Number.isInteger(t)) return setMsg('Scanning counts whole items. Enter a whole number.')
     if (t > left) return setMsg(`Only ${left} ${p.unit} left in the store.`)
+    if (t > invoiceLeft) return setMsg(`Only ${invoiceLeft} ${p.unit} left to supply on invoice ${selectedInvoice.invoice_no}.`)
     if (!sel.sheet_started_at && !items.some((x) => x.supplyId === sel.id && x.kind === 'start_sheet')) {
       const hit = await recordOrQueue({
         kind: 'start_sheet', supplyId: sel.id, log: `Created the sheet for ${p.name}`, payload: { productName: p.name },
@@ -149,21 +159,26 @@ function ScanOut() {
 
   async function record(): Promise<string> {
     if (!sel || !p || busy || !(count > 0)) return ''
+    if (!selectedInvoice) {
+      const message = 'The entered invoice/sales number is not verified. Go back, confirm it and enter again.'
+      setMsg(message)
+      return message
+    }
     setBusy(true); setMsg('')
-    const c = cust.trim(), r = ref.trim()
+    const c = selectedInvoice.customer_name, r = selectedInvoice.invoice_no
     const clientId = crypto.randomUUID()
     const log = `${p.name}: supplied ${count} ${p.unit} to ${c} (${r}) from ${sel.stores?.name ?? 'the store'} — scan-verified`
     const hit = await recordOrQueue({
       id: clientId, kind: 'sheet_row', supplyId: sel.id, log,
-      payload: { customer: c, supply_ref: r, quantity: count, productName: p.name },
-    }, () => insertEntry('sheet_rows', { supply_id: sel.id, customer: c, supply_ref: r, quantity: count, client_id: clientId }))
+      payload: { customer: c, supply_ref: r, invoiceId: selectedInvoice.invoice_id, invoiceItemId: selectedInvoice.invoice_item_id, quantity: count, productName: p.name },
+    }, () => recordManagerSupplyRequest({ supplyId: sel.id, invoiceId: selectedInvoice.invoice_id, invoiceItemId: selectedInvoice.invoice_item_id, quantity: count, clientId }))
     setBusy(false)
     if (!hit.ok) { setMsg(hit.message); return hit.message }
-    if (hit.queued) toast('Saved on this device. It will sync when you are back online.')
-    else { await logAct(log); toast('Supply recorded') }
+    if (hit.queued) toast('Saved on this device. The invoice quantity will be checked again when it syncs.')
+    else { await logAct(log); toast('Supply recorded and invoice totals updated') }
     setDone({ count, cust: c, ref: r, queued: hit.queued, at: new Date().toISOString() })
     setPhase('done')
-    reload()
+    reload(); void reloadInvoices()
     return ''
   }
 
@@ -179,7 +194,7 @@ function ScanOut() {
   }
 
   function nextCustomer() {
-    setCust(''); setRef(''); setTarget(''); setDone(null)
+    setInvoiceRef(''); setTarget(''); setDone(null)
     toSetup()
   }
 
@@ -197,20 +212,27 @@ function ScanOut() {
         <div className="content-grid">
           <div className="panel">
             <h2>Set up the supply</h2>
-            <label>Product<select value={activeId} onChange={(e) => { setSupplyId(e.target.value); setMsg('') }}>
+            <label>Product<select value={activeId} onChange={(e) => { setSupplyId(e.target.value); setInvoiceRef(''); setTarget(''); setMsg('') }}>
               {candidates.map((s: any) => <option key={s.id} value={s.id}>{s.products?.name} — {avail(s)} {s.products?.unit} left</option>)}
             </select></label>
             {sel ? <div className="note">Barcode: <b className="font-mono">{p?.barcode || 'not set'}</b> · {left} {p?.unit} left in {sel.stores?.name ?? 'your store'}</div> : null}
-            <label>Customer name<input value={cust} maxLength={80} onChange={(e) => setCust(e.target.value)} placeholder="e.g., Alex Johnson" /></label>
-            <label>Supply ID (invoice or sales number)<input value={ref} maxLength={40} onChange={(e) => setRef(e.target.value)} placeholder="e.g., INV-1003" /></label>
-            <label>Quantity the customer is taking ({p?.unit ?? 'items'})<input type="number" min="1" step="1" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="e.g., 1000" /></label>
+            <ManagerInvoiceInput
+              items={invoiceItems}
+              value={invoiceRef}
+              onChange={(value) => { setInvoiceRef(value); setTarget(''); setMsg('') }}
+              remaining={takeLimit}
+              unit={p?.unit ?? 'items'}
+              loading={invoiceData === null && !invoiceErr}
+              error={invoiceErr}
+            />
+            <label>Quantity the customer is taking ({p?.unit ?? 'items'})<input type="number" min="1" max={takeLimit || undefined} step="1" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="e.g., 1000" /></label>
             <p className="err" role="alert">{msg}</p>
             <button className="btn" onClick={begin}>Start scanning</button>
           </div>
           <div className="panel">
             <h2>How it works</h2>
             <ol className="m-0 flex flex-col gap-2.5 pl-5 text-sm text-mute">
-              <li>Choose the product, the customer and the amount they are taking — for example, 1000 buckets of mayonnaise.</li>
+              <li>Choose the product, an invoice created by the admin, and the amount being supplied — for example, 1000 buckets of mayonnaise.</li>
               <li>Scan the barcode on <b className="text-ink">every item</b> that leaves the store: phone camera, USB/Bluetooth scanner, or typed code. Each accepted scan adds one.</li>
               <li>A barcode from another product is rejected, so nothing wrong gets counted.</li>
               <li>When the count reaches the amount, confirm. The supply is added to the sheet and taken off the stock left in the store.</li>
@@ -231,7 +253,8 @@ function ScanOut() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <b className="font-head text-lg">{p.name}</b>
-            <p className="m-0 truncate text-sm text-mute">{cust} · {ref}</p>
+            <p className="m-0 truncate text-sm text-mute">{selectedInvoice ? `${selectedInvoice.customer_name} · ${selectedInvoice.invoice_no}` : 'Invoice/sales number not verified'}</p>
+            {selectedInvoice ? <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-mute"><span>{selectedInvoice.quantity_supplied} supplied · {selectedInvoice.quantity_pending} pending</span><StatusChip status={selectedInvoice.supply_status} /></div> : null}
           </div>
           <button type="button" className={cx('iconbtn', sound && 'text-acc')} aria-pressed={sound} onClick={toggleSound} title={sound ? 'Mute scan sounds' : 'Unmute scan sounds'} aria-label={sound ? 'Mute scan sounds' : 'Unmute scan sounds'}>
             <Icon name={sound ? 'sound' : 'mute'} />
@@ -294,7 +317,7 @@ function ScanOut() {
         <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-sm">
           <dt className="text-mute">Product</dt><dd className="m-0 font-medium">{p.name}</dd>
           <dt className="text-mute">Customer</dt><dd className="m-0 font-medium">{done.cust}</dd>
-          <dt className="text-mute">Supply ID</dt><dd className="m-0 font-medium">{done.ref}</dd>
+          <dt className="text-mute">Sales / invoice number</dt><dd className="m-0 font-medium">{done.ref}</dd>
           <dt className="text-mute">Quantity recorded</dt><dd className="m-0 font-medium">{done.count} {p.unit} (scan-verified)</dd>
           <dt className="text-mute">Recorded at</dt><dd className="m-0 font-medium">{new Date(done.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</dd>
         </dl>
@@ -307,7 +330,7 @@ function ScanOut() {
     ) : null}
 
     <Confirm open={askPartial} title="Record partial count" label={`Record ${count}`} onClose={() => setAskPartial(false)}
-      text={p ? `You scanned ${count} of ${goal} ${p.unit}. Record ${count} ${p.unit} supplied to ${cust} (${ref}) now? The rest can be supplied later.` : ''}
+      text={p && selectedInvoice ? `You scanned ${count} of ${goal} ${p.unit}. Record ${count} ${p.unit} supplied to ${selectedInvoice.customer_name} (${selectedInvoice.invoice_no}) now? The rest can be supplied later.` : ''}
       onConfirm={record} />
     <Confirm open={askCancel} title="Discard scan session" label="Discard" onClose={() => setAskCancel(false)}
       text={p ? `Discard this session? ${count} scanned ${p.unit} will not be recorded.` : ''}

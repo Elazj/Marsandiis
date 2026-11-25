@@ -5,9 +5,9 @@ import { csv, download, friendly, localDay, q, toast } from '@/lib/data'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { DangerBox, TabHead } from './shared'
 
-const TABLES = ['stores', 'products', 'supplies', 'sheet_rows', 'losses', 'gifts', 'customers', 'invoices', 'invoice_items', 'payments', 'invoice_supply_updates', 'receipts', 'reports', 'activity_log'] as const
+const TABLES = ['stores', 'products', 'supplies', 'sheet_rows', 'losses', 'gifts', 'customers', 'invoices', 'invoice_items', 'payments', 'salary_payments', 'misc_expenses', 'bank_deposits', 'invoice_supply_updates', 'receipts', 'reports', 'activity_log'] as const
 const FORMAT = 'stockroom-backup-1'
-const LABELS: Record<string, string> = { stores: 'stores', products: 'products', supplies: 'supplies', sheet_rows: 'sheet entries', losses: 'damaged or missing entries', gifts: 'gifts', customers: 'customers', invoices: 'invoices', invoice_items: 'invoice products', payments: 'payments', invoice_supply_updates: 'supply updates', receipts: 'receipts', reports: 'reports', activity_log: 'activity records' }
+const LABELS: Record<string, string> = { stores: 'stores', products: 'products', supplies: 'supplies', sheet_rows: 'sheet entries', losses: 'damaged or missing entries', gifts: 'gifts', customers: 'customers', invoices: 'invoices', invoice_items: 'invoice products', payments: 'payments', salary_payments: 'salary payments', misc_expenses: 'miscellaneous expenses', bank_deposits: 'bank deposits', invoice_supply_updates: 'supply updates', receipts: 'receipts', reports: 'reports', activity_log: 'activity records' }
 
 // The database returns at most 1000 rows per request, so read page by page.
 async function fetchAll(table: string) {
@@ -56,7 +56,7 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     setBusy(false)
     if (error) {
       return setErr(/could not find the function|schema cache/i.test(error.message)
-        ? 'The reset function is missing or outdated in your database. Run supabase/migration-007.sql in the Supabase SQL editor, then try again.'
+        ? 'The reset function is missing or outdated in your database. Run supabase/migration-021.sql in the Supabase SQL editor, then try again.'
         : error.message)
     }
     toast('Everything has been cleared')
@@ -64,7 +64,7 @@ function ResetBody({ onClose }: { onClose: () => void }) {
     onClose()
   }
   return (<>
-    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, sale, invoice, payment, receipt, gift, report and activity record of your company. Other companies are not affected. It cannot be undone.</p>
+    <p className="mute mt-0">This permanently deletes every store, product, supply, sheet entry, sale, invoice, payment, receipt, salary payment, miscellaneous expense, bank deposit, gift, report and activity record of your company. Other companies are not affected. It cannot be undone.</p>
     <label className="flex items-center gap-2">
       <input type="checkbox" className="m-0 w-auto" checked={wipe} onChange={(e) => setWipe(e.target.checked)} /> Also delete all store manager accounts of this company
     </label>
@@ -125,7 +125,7 @@ export default function Backup() {
   return (<>
     <TabHead title="Backup & Restore" desc="Keep a copy of your company data, or start over." />
     <h3 className="m-0 text-[15px]">Download a backup</h3>
-    <p className="mb-3 mt-1 text-[13px] text-mute">{last ? `Last backup made on this device: ${last}` : 'No backup made on this device yet.'} A backup has your company settings, stores, products, supplies, entries, customers, invoices, payments, receipts, reports and activity. It does not contain passwords or accounts.</p>
+    <p className="mb-3 mt-1 text-[13px] text-mute">{last ? `Last backup made on this device: ${last}` : 'No backup made on this device yet.'} A backup has your company settings, stores, products, supplies, entries, customers, invoices, payments, salary payments, expenses, bank deposits, receipts, reports and activity. It does not contain passwords or accounts. Backups include sensitive compensation records and bank account references, so store them securely.</p>
     <div className="flex flex-wrap gap-3">
       <button className="btn" disabled={!!busy} onClick={backup}>{busy === 'backup' ? 'Preparing…' : 'Download full backup'}</button>
       <button className="btn ghost" disabled={!!busy} onClick={products}>{busy === 'csv' ? 'Preparing…' : 'Export products (CSV)'}</button>
@@ -134,7 +134,7 @@ export default function Backup() {
     <p className="mb-3 mt-1 text-[13px] text-mute">Choose a backup file made here. Restoring replaces your current data.</p>
     <input ref={input} type="file" accept="application/json,.json" aria-label="Backup file" onChange={(e) => choose(e.target.files?.[0])} className="m-0 text-[13px]" />
     <p className="err mt-3" role="alert">{msg}</p>
-    <DangerBox title="Reset all data" text="Clears every store, product, supply, sale, invoice, payment, receipt, sheet, gift and report of your company.">
+    <DangerBox title="Reset all data" text="Clears every store, product, supply, sale, invoice, payment, receipt, salary payment, expense, bank deposit, sheet, gift and report of your company.">
       <button className="btn danger" onClick={() => setReset(true)}>Reset data</button>
     </DangerBox>
     <Modal open={!!picked} title="Restore backup" onClose={() => setPicked(null)}>{picked ? <RestoreBody file={picked.file} backup={picked.backup} onClose={() => setPicked(null)} /> : null}</Modal>

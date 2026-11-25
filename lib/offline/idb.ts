@@ -16,6 +16,8 @@ export type OutboxItem = {
   payload: {
     customer?: string
     supply_ref?: string
+    invoiceId?: string
+    invoiceItemId?: string
     quantity?: number
     lossKind?: 'damaged' | 'missing'
     recipient?: string

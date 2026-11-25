@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Chip } from '@/components/ui'
 import { Kpi } from '@/components/Kpi'
 import Notices from '@/components/Notices'
-import { SupplyLossChart, StatusDonut, StoreBars, TopBars } from '@/components/charts'
+import { CashFlowChart, SupplyLossChart, StatusDonut, StoreBars, TopBars } from '@/components/charts'
 import { fmtT, level, q, sum, useLive } from '@/lib/data'
 import { AdminDashboardDateRange, defaultAdminDashboardDateRange, localDateString, readAdminDashboardDateRange, subscribeAdminDashboardDateRange } from '@/lib/dashboardDate'
+import { loadFinanceSummary } from '@/lib/finances'
+import { money } from '@/lib/money'
 
 export default function AdminDashboard() {
   const [selectedRange, setSelectedRange] = useState<AdminDashboardDateRange>({ start: '', end: '' })
@@ -14,11 +17,11 @@ export default function AdminDashboard() {
     return subscribeAdminDashboardDateRange(setSelectedRange)
   }, [])
   const range = selectedRange.start && selectedRange.end ? selectedRange : defaultAdminDashboardDateRange()
+  const from = new Date(`${range.start}T00:00:00`).toISOString()
+  const untilDate = new Date(`${range.end}T00:00:00`)
+  untilDate.setDate(untilDate.getDate() + 1)
+  const until = untilDate.toISOString()
   const { data: d, err } = useLive<any>(async (sb) => {
-    const from = new Date(`${range.start}T00:00:00`).toISOString()
-    const untilDate = new Date(`${range.end}T00:00:00`)
-    untilDate.setDate(untilDate.getDate() + 1)
-    const until = untilDate.toISOString()
     const [bal, products, stores, open, reps, log, rows, losses, gifts] = await Promise.all([
       q(sb.from('supply_balance').select('*')), q(sb.from('products').select('*')), q(sb.from('stores').select('*')),
       (async () => {
@@ -34,6 +37,13 @@ export default function AdminDashboard() {
     ])
     return { bal, products, stores, open, reps, log, rows, losses, gifts }
   }, ['supplies', 'sheet_rows', 'losses', 'gifts', 'reports', 'activity_log', 'products', 'stores'], `admin-dashboard-${range.start}-${range.end}`, 5_000)
+  const { data: finance, err: financeErr } = useLive(
+    (sb) => loadFinanceSummary(sb, from, until),
+    ['payments', 'salary_payments', 'misc_expenses', 'bank_deposits'],
+    `admin-dashboard-finance-${range.start}-${range.end}`,
+    5_000,
+    false,
+  )
   if (err) return <p className="err">{err}</p>
   if (!d) return <p className="mute">Loading…</p>
 
@@ -74,7 +84,7 @@ export default function AdminDashboard() {
   return (<>
     <div className="hero">
       <div><h1>Dashboard</h1><p>Live overview of every store. Entries from store managers appear here automatically.</p></div>
-      <span className="live-pill"><i />Live</span>
+      <div className="flex items-center gap-3"><span className="live-pill"><i />Live</span><Link href="/admin/finances" className="btn ghost sm">Open finances</Link></div>
     </div>
     {!d.stores.length || !B.length ? <div className="panel mb-4"><b>Get started.</b> <span className="mute">Add a store under Stores, create a product under Products, then add it to a store under Supplies.</span></div> : null}
     <Notices role="admin" />
@@ -93,6 +103,37 @@ export default function AdminDashboard() {
       <Kpi icon="archive" label="Remaining in stores (current)" value={sum(B, (b) => Number(b.remaining))} />
       <Kpi icon="flag" label="Open reports in period" value={d.open} tone={d.open ? 'bad' : undefined} />
     </div>
+    <section className="panel mb-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="m-0">Finances: {dateLabel}</h2><p className="mute mb-0">Customer payments received, salaries paid, miscellaneous expenses and bank deposits in the selected period.</p></div><Link href="/admin/finances" className="btn ghost sm">Manage finances</Link></div>
+      {financeErr ? <p className="err" role="alert">{financeErr}</p> : null}
+      {!finance ? <p className="mute">Loading cash totals…</p> : <>
+        <div className="content-grid">
+          {(['GMD', 'XOF'] as const).map((currency) => {
+            const value = finance.currencies[currency]
+            return <div className="panel" key={currency}>
+              <h2 className="mt-0">{currency} cash position</h2>
+              <div className="wrap"><table><tbody>
+                <tr><th>Cash in vault through {endLabel}</th><td className="n"><b>{money(value.cashInVault, currency)}</b></td></tr>
+                <tr><th>Customer cash received (period)</th><td className="n">{money(value.received, currency)}</td></tr>
+                <tr><th>Salaries paid</th><td className="n">{money(value.salaries, currency)}</td></tr>
+                <tr><th>Miscellaneous expenses</th><td className="n">{money(value.expenses, currency)}</td></tr>
+                <tr><th>Bank deposits (transfers)</th><td className="n">{money(value.deposits, currency)}</td></tr>
+                <tr><th>Total outgoing (salaries and expenses)</th><td className="n"><b>{money(value.totalOutgoing, currency)}</b></td></tr>
+                <tr><th>Total vault deductions (including deposits)</th><td className="n">{money(value.vaultOutgoing, currency)}</td></tr>
+                <tr><th>Net cash flow for selected period</th><td className="n"><b>{money(value.netCashFlow, currency)}</b></td></tr>
+              </tbody></table></div>
+            </div>
+          })}
+        </div>
+        <p className="note mb-0">Cash in vault is all customer cash received through the end date minus all active salary payments, expenses and bank deposits, including older records. Net cash flow covers only the selected period and excludes bank deposits because they are transfers, not business expenses. GMD and XOF are never added together.</p>
+        <div className="content-grid mt-4">
+          {(['GMD', 'XOF'] as const).map((currency) => <div className="panel" key={currency}>
+            <h2>{currency} daily cash flow</h2>
+            <CashFlowChart currency={currency} days={finance.daily.filter((row: { currency: string }) => row.currency === currency).sort((a: { day: string }, b: { day: string }) => a.day.localeCompare(b.day))} />
+          </div>)}
+        </div>
+      </>}
+    </section>
     <div className="content-grid wide">
       <div className="panel"><h2>Supplied, gifted and lost: {dateLabel}</h2>
         <SupplyLossChart labels={chartDays.map((day) => new Date(`${day}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }))} supplied={dailyTotals(d.rows)} gifted={dailyTotals(d.gifts)} lost={dailyTotals(d.losses)} /></div>

@@ -66,14 +66,27 @@ grant execute on function public.my_store() to authenticated;
 grant execute on function public.start_sheet(uuid) to authenticated;
 grant execute on all functions in schema public to authenticated, service_role;
 
+-- Keep finance tables admin-only even after the broad repair grants above.
+do $$
+declare t text;
+begin
+  foreach t in array array['salary_payments','misc_expenses','bank_deposits'] loop
+    if to_regclass(format('public.%I', t)) is not null then
+      execute format('revoke insert, update, delete on public.%I from authenticated', t);
+      execute format('grant select on public.%I to authenticated', t);
+    end if;
+  end loop;
+end $$;
+
 -- 6. Security rules: now defined in migration-007.sql (they check the company too).
 
 -- 7. Live updates for every table (skips tables that are already switched on)
 do $$
 declare t text;
 begin
-  foreach t in array array['supplies','sheet_rows','losses','reports','activity_log','products','stores','profiles'] loop
-    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+  foreach t in array array['supplies','sheet_rows','losses','reports','activity_log','products','stores','profiles','salary_payments','misc_expenses','bank_deposits'] loop
+    if to_regclass(format('public.%I', t)) is not null
+       and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
       execute format('alter publication supabase_realtime add table public.%I', t);
     end if;
   end loop;

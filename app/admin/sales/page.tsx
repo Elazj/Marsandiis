@@ -17,7 +17,7 @@ const PAGE_SIZE = 25
 
 export default function SalesPage() {
   const settings = useSettings()
-  const { data, err, reload, fromCache } = useLive(loadSales, ['invoice_summary', 'invoice_items', 'payments', 'customers', 'products', 'receipts'], 'admin-sales', 5_000)
+  const { data, err, reload, fromCache } = useLive(loadSales, ['invoice_summary', 'invoice_items', 'payments', 'customers', 'products', 'receipts', 'gifts', 'losses'], 'admin-sales-stock-v2', 5_000)
   const [tab, setTab] = useState<Tab>('invoices')
   const [search, setSearch] = useState('')
   const [currency, setCurrency] = useState<'all' | SalesCurrency>('all')
@@ -76,8 +76,8 @@ export default function SalesPage() {
 
   function exportInvoices() {
     download(`invoices-${localDay(new Date())}.csv`, csv([
-      ['Invoice number', 'Customer', 'Date', 'Currency', 'GMD per 5000 CFA', 'Total', 'Amount paid', 'Outstanding', 'Payment status', 'Supply status', 'Payment methods'],
-      ...filtered.map((invoice) => [invoice.invoice_no, invoice.customer_name, invoice.invoice_date, invoice.currency, invoice.currency === 'XOF' ? gmdPerCfaBlock(invoice.exchange_rate) : '', invoice.total_amount, invoice.amount_paid, invoice.outstanding, invoice.payment_status, invoice.supply_status, (data?.payments ?? []).filter((payment) => payment.invoice_id === invoice.id).map((payment) => payment.method).join(', ')]),
+      ['Sales / invoice number', 'Customer', 'Date', 'Currency', 'GMD per 5000 CFA', 'Total', 'Amount paid', 'Outstanding', 'Payment status', 'Quantity supplied', 'Quantity pending', 'Supply status', 'Payment methods'],
+      ...filtered.map((invoice) => [invoice.invoice_no, invoice.customer_name, invoice.invoice_date, invoice.currency, invoice.currency === 'XOF' ? gmdPerCfaBlock(invoice.exchange_rate) : '', invoice.total_amount, invoice.amount_paid, invoice.outstanding, invoice.payment_status, invoice.quantity_supplied, invoice.quantity_pending, invoice.supply_status, (data?.payments ?? []).filter((payment) => payment.invoice_id === invoice.id).map((payment) => payment.method).join(', ')]),
     ]))
   }
 
@@ -87,7 +87,7 @@ export default function SalesPage() {
   return <>
     <div className="hero">
       <div><h1>Sales & Invoices</h1><p>Record customer sales, track supplies and payments, and reprint receipts. Financial and supply status update automatically.</p></div>
-      <div className="flex items-center gap-3"><span className="live-pill"><i />{fromCache ? 'Syncing' : 'Live'}</span><button className="btn" onClick={() => setFormOpen(true)}>Create invoice</button></div>
+      <div className="flex items-center gap-3"><span className="live-pill"><i />{fromCache ? 'Syncing' : 'Live'}</span><button className="btn" onClick={() => setFormOpen(true)}>Create sale / invoice</button></div>
     </div>
     <div className="panel sales-filters">
       <label className="m-0 sm:col-span-2">Search invoice, customer or product<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="e.g., INV-000001 or customer name" /></label>
@@ -107,8 +107,8 @@ export default function SalesPage() {
     </div>
 
     {tab === 'invoices' ? <section className="panel">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h2 className="m-0">Recorded invoices</h2><button className="btn ghost sm" onClick={exportInvoices}>Export invoices (CSV)</button></div>
-      <div className="wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Products</th><th className="n">Total</th><th className="n">Paid</th><th className="n">Outstanding</th><th>Payment</th><th>Supply</th><th /></tr></thead><tbody>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h2 className="m-0">Recorded sales & invoices</h2><button className="btn ghost sm" onClick={exportInvoices}>Export sales / invoices (CSV)</button></div>
+      <div className="wrap"><table><thead><tr><th>Sale / invoice</th><th>Customer</th><th>Date</th><th>Products</th><th className="n">Total</th><th className="n">Paid</th><th className="n">Outstanding</th><th>Payment</th><th className="n">Supplied</th><th className="n">Pending</th><th>Supply</th><th /></tr></thead><tbody>
         {visible.map((invoice) => <InvoiceRow key={invoice.id} invoice={invoice} itemCount={data.items.filter((item) => item.invoice_id === invoice.id).length} onOpen={() => setInvoiceId(invoice.id)} />)}
       </tbody></table></div>
       {!filtered.length ? <p className="mute mb-0">No invoices match these filters. Create the first invoice or clear the filters.</p> : null}
@@ -136,6 +136,6 @@ function InvoiceRow({ invoice, itemCount, onOpen }: { invoice: InvoiceSummary; i
     <td><button className="linkbtn" onClick={onOpen}><b>{invoice.invoice_no}</b></button><span className="block text-xs text-mute">{invoice.currency}</span></td>
     <td>{invoice.customer_name}</td><td>{invoice.invoice_date}</td><td>{itemCount} product{itemCount === 1 ? '' : 's'}</td>
     <td className="n">{money(invoice.total_amount, invoice.currency)}</td><td className="n">{money(invoice.amount_paid, invoice.currency)}</td><td className="n">{money(invoice.outstanding, invoice.currency)}</td>
-    <td><StatusChip status={invoice.payment_status} /></td><td><StatusChip status={invoice.supply_status} /></td><td><button className="btn ghost sm" onClick={onOpen}>Open</button></td>
+    <td><StatusChip status={invoice.payment_status} /></td><td className="n">{invoice.quantity_supplied}</td><td className="n">{invoice.quantity_pending}</td><td><StatusChip status={invoice.supply_status} /></td><td><button className="btn ghost sm" onClick={onOpen}>Open</button></td>
   </tr>
 }

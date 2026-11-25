@@ -1,5 +1,6 @@
+'use client'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { friendly, q } from '@/lib/data'
+import { friendly, q, useLive } from '@/lib/data'
 import type { SalesCurrency } from '@/lib/money'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
@@ -70,11 +71,23 @@ export type SupplyUpdateRow = {
   note: string | null
   created_by: string
   created_at: string
+  change_kind: 'supply' | 'reversal'
   profiles: { full_name: string } | null
 }
 
 export type CustomerRow = { id: string; company_id: string; name: string; created_at: string }
-export type ProductRow = { id: string; name: string; unit: string; container_no: string; default_unit_price_gmd: number }
+export type ProductRow = {
+  id: string
+  name: string
+  unit: string
+  container_no: string
+  default_unit_price_gmd: number
+  net: number
+  sold: number
+  gifted: number
+  lost: number
+  available: number
+}
 export type ReceiptRow = { id: string; receipt_no: string; invoice_id: string; payment_id: string | null; kind: 'Invoice' | 'Payment'; issued_at: string }
 
 export type SalesData = {
@@ -106,12 +119,21 @@ export async function loadSales(sb: SupabaseClient): Promise<SalesData> {
     q(sb.from('invoice_items').select('*').order('created_at')),
     q(sb.from('payments').select('*').order('paid_at', { ascending: false })),
     q(sb.from('customers').select('*').order('name')),
-    q(sb.from('products').select('id, name, unit, container_no, default_unit_price_gmd').order('name')),
+    q(sb.from('product_stock').select('*').order('name')),
     q(sb.from('receipts').select('id, receipt_no, invoice_id, payment_id, kind, issued_at').order('issued_at', { ascending: false })),
   ])
-  const productMap = new Map(products.map((product: ProductRow) => [product.id, { name: product.name, unit: product.unit, container_no: product.container_no }]))
+  const productRows: ProductRow[] = (products as any[]).map((product) => ({
+    ...product,
+    default_unit_price_gmd: Number(product.default_unit_price_gmd) || 0,
+    net: Number(product.net) || 0,
+    sold: Number(product.sold) || 0,
+    gifted: Number(product.gifted) || 0,
+    lost: Number(product.lost) || 0,
+    available: Number(product.available) || 0,
+  }))
+  const productMap = new Map(productRows.map((product) => [product.id, { name: product.name, unit: product.unit, container_no: product.container_no }]))
   const items = rawItems.map((item: any) => ({ ...item, products: productMap.get(item.product_id) ?? null })) as InvoiceItem[]
-  return { invoices, items, payments, customers, products, receipts }
+  return { invoices, items, payments, customers, products: productRows, receipts }
 }
 
 export async function loadSalesOverview(sb: SupabaseClient) {
@@ -214,6 +236,83 @@ export async function recordInvoicePayment(invoiceId: string, amount: number, me
 export async function updateInvoiceSupply(itemId: string, quantity: number, note: string) {
   const { error } = await supabaseRpc('update_invoice_item_supply', { p_item: itemId, p_quantity: quantity, p_note: note || null })
   if (error) rpcError(error)
+}
+
+export type ManagerInvoiceItem = {
+  invoice_id: string
+  invoice_item_id: string
+  invoice_no: string
+  customer_name: string
+  invoice_date: string
+  product_id: string
+  product_name: string
+  unit: string
+  quantity_sold: number
+  quantity_supplied: number
+  quantity_pending: number
+  supply_status: SupplyStatus
+  invoice_quantity_sold: number
+  invoice_quantity_supplied: number
+  invoice_quantity_pending: number
+  invoice_status: SupplyStatus
+  can_supply: boolean
+}
+
+export function matchManagerInvoice(items: ManagerInvoiceItem[], reference: string) {
+  const normalized = reference.trim().replace(/\s+/g, ' ').toLowerCase()
+  if (!normalized) return null
+  const matches = items.filter((item) => item.invoice_no.trim().replace(/\s+/g, ' ').toLowerCase() === normalized)
+  return matches.length === 1 ? matches[0] : null
+}
+
+export type ManagerSupplyInput = {
+  supplyId: string
+  invoiceId: string
+  invoiceItemId: string
+  quantity: number
+  clientId: string
+  createdAt?: string
+}
+
+export type ManagerSupplyResult = {
+  sheet_row_id: string
+  invoice_id: string | null
+  invoice_item_id: string | null
+  quantity_supplied: number | null
+  quantity_pending: number | null
+  supply_status: SupplyStatus | null
+  customer_name: string
+  invoice_no: string
+  already_recorded: boolean
+}
+
+export async function listManagerInvoiceItems(sb: SupabaseClient, supplyId: string): Promise<ManagerInvoiceItem[]> {
+  if (!supplyId) return []
+  return q(sb.rpc('list_manager_invoice_items', { p_supply: supplyId })) as Promise<ManagerInvoiceItem[]>
+}
+
+export function useManagerInvoiceItems(supplyId: string) {
+  return useLive<ManagerInvoiceItem[]>(
+    (sb) => listManagerInvoiceItems(sb, supplyId),
+    ['sheet_rows'],
+    `manager-invoice-items:${supplyId}`,
+    5000,
+  )
+}
+
+export const recordManagerSupplyRequest = (input: ManagerSupplyInput) => supabaseRpc('record_manager_supply', {
+  p_supply: input.supplyId,
+  p_invoice: input.invoiceId,
+  p_item: input.invoiceItemId,
+  p_quantity: input.quantity,
+  p_client_id: input.clientId,
+  p_created_at: input.createdAt ?? null,
+})
+
+export async function undoManagerSupply(rowId: string): Promise<ManagerSupplyResult> {
+  const { data, error } = await supabaseRpc('undo_manager_supply', { p_row: rowId })
+  if (error) rpcError(error)
+  return data as ManagerSupplyResult
 }
 
 const supabaseRpc = (name: string, args: Record<string, unknown>) => supabaseBrowser().rpc(name, args)

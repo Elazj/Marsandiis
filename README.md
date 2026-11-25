@@ -1,13 +1,13 @@
 # Marsandiis: Next.js + Supabase
 
 Multi-store, multi-company stock management, styled with Tailwind CSS v4. Admin and store manager roles, email sign-up with confirmation, Google sign-in,
-live dashboards with Chart.js, customer supply sheets with CSV download, gifts, reports, settings, dark/light theme.
+live dashboards with Recharts, customer supply sheets with CSV download, gifts, reports, settings, dark/light theme.
 Many companies can use one deployment: each company has one admin and its own separate data.
 
 ## Set up (new Supabase project)
 1. Create a project at supabase.com.
-2. SQL editor: paste all of `supabase/schema.sql` and run it, then run `migration-017.sql`, `migration-018.sql`, and `migration-019.sql` in new query tabs.
-   Already ran an older schema? Run `migration-002.sql` through `migration-019.sql` (each once, only if not yet run, in that order) in new query tabs.
+2. SQL editor: paste all of `supabase/schema.sql` and run it, then run `migration-017.sql` through `migration-024.sql` in new query tabs, in order.
+   Already ran an older schema? Run `migration-002.sql` through `migration-024.sql` (each once, only if not yet run, in that order) in new query tabs.
    `migration-007.sql` adds companies, per-company data separation, "date arrived" and gifts. Your existing data moves into one company called "My company"
    (rename it with the one-line `update` shown at the top of that file). Do not run `migration-002`, `003` or `004` again after 007.
    `migration-008.sql` fixes recursive row-security checks when adding a product to a store.
@@ -18,7 +18,7 @@ Many companies can use one deployment: each company has one admin and its own se
    `migration-014.sql` enables cache-safe profile picture replacements. Run it on existing databases before changing a profile picture.
    `migration-015.sql` lets a store reuse an invoice/sales number only with the same customer name.
    `migration-016.sql` lets managers undo their own supply records.
-   `migration-017.sql` adds product barcodes; `migration-018.sql` adds sales, invoices, payments, supply tracking and receipts; `migration-019.sql` adds invoice corrections/deletion and custom receipt branding.
+   `migration-017.sql` adds product barcodes; `migration-018.sql` adds sales, invoices, payments, supply tracking and receipts; `migration-019.sql` adds invoice corrections/deletion and custom receipt branding; `migration-020.sql` adds salary payments, miscellaneous expenses and dashboard cash-flow totals; `migration-021.sql` adds bank-deposit history and deposit totals without treating transfers as income or expenses; `migration-022.sql` links manager supplies to admin-created sales/invoice items, enforces server-side stock and invoice limits, and adds atomic undo/reversal history; `migration-023.sql` adds cumulative cash-in-vault totals and editable payroll batches with employee counts; `migration-024.sql` reserves product stock on invoice creation and prevents sales, gifts or losses from exceeding product totals.
    Every admin tab shows "permission denied"? Run `repair.sql` once, then reload. (On an older database run `repair.sql` first, then `migration-007.sql`.)
 3. Authentication > Providers: keep **Email** on and turn on **Confirm email**. Optional: turn on **Google**.
 4. Authentication > Policies: minimum password length 8, require lower case, upper case, digits and symbols.
@@ -53,10 +53,12 @@ The browser cannot reach Supabase. The login page shows a red notice that says w
 - Data separation: every store, product, supply, entry, gift, report and account belongs to one company, and the database (row level security) only lets people see their own company's data.
 - Admins can update their sign-in email from Account & Profile (email confirmation may be required) and rename the company in Admin Settings > General. Every user can upload their own profile picture from Account & Profile.
   "Reset all data" in Settings clears only the admin's own company.
-- Admin: Dashboard, Stores, Team (create manager accounts, set passwords, assign stores, disable or delete), Products (each product records its **date arrived**), Supplies, Forecast, Reports, Settings (profile, theme, password, sign out, reset all data).
-- Store manager (up to 3 accounts per store): Dashboard, Daily entry (sheets with supplies, **gifts**, damaged or missing; CSV download, offline queue), Forecast, Reports, Settings.
+- Admin: Dashboard, Stores, Team (create manager accounts, set passwords, assign stores, disable or delete), Products (each product records its **date arrived**), Sales / Invoices, Finances (salary payments, rent, cash power, fuel, car maintenance, other expenses and bank deposits), Supplies, Forecast, Reports, Settings (profile, theme, password, sign out, reset all data).
+- Finance: new salary records are payroll batches containing the total paid, number of employees, pay period, payment date, currency and method. Admins can edit any active salary record; voided records stay in history but cannot be edited and are excluded from totals. Older per-employee salary records and backups remain supported with an employee count of one. Bank deposits record the bank, optional account and deposit references, date, currency and note. **Cash in hand / vault** is all customer cash received through the selected end date minus all active salary payments, miscellaneous expenses and bank deposits, including older records. Selected-period operating cash flow stays separate: net cash flow excludes deposits because they are transfers, while vault deductions include them. GMD and XOF are always kept separate.
+- Sales / invoices: use a sales number for a cash sale paid in full, or an invoice number when the customer will repay later. Payment and supply status are independent. Admins see supplied and pending quantities per product and for the whole invoice. The invoice form shows live stock available for each product and the quantity left after the proposed sale. Saving an invoice reserves its sold quantity immediately; editing or deleting it recalculates availability. A product cannot be sold once its total stock is committed, and gifts or damaged/missing losses also reduce saleable stock. Add more total stock by editing the product in Products.
+- Store manager (up to 3 accounts per store): Dashboard, Daily entry (sheets with supplies, **gifts**, damaged or missing; CSV download, offline queue), Scan out, Forecast, Reports, Settings. Managers type the admin-created sales/invoice number manually; only an exact verified match can be recorded, and supplied/pending progress appears on the sheet and CSV.
 - Gifts: a manager records gifted products on the sheet (who it was given to, quantity, optional note). A gift is taken off the stock left in the store, shows on the sheet, the CSV, the admin Supplies page and the dashboards, and counts as use in the forecast.
-- Offline entry: a manager who already opened Daily entry while online can record supplies with no connection. They stay in the browser and sync in order when the network returns. If stock ran out or the same supply ID was used, the bar at the top asks them to record a smaller quantity, save anyway, or discard. Run `supabase/migration-006.sql` once so a retry cannot insert the same entry twice.
+- Offline entry: a manager who already opened Daily entry while online can record supplies with no connection. They stay in the browser and sync in order when the network returns. Store stock and invoice-pending quantities are checked again before each sync. If another entry used the stock or invoice quantity, the bar asks the manager to record the remaining amount or discard; retries cannot insert the same supply twice. Run `supabase/migration-006.sql` and `migration-022.sql` once.
 - Forecast: each product’s daily use (supplied + damaged + missing) is projected with a 7-day moving average and exponential smoothing. The Forecast page scores both on held-out days (MAE, RMSE, sMAPE) and suggests a reorder date 7 days before the predicted stock-out.
 - Sign out and the theme toggle are inside Settings, at the bottom of the menu.
 
@@ -64,4 +66,4 @@ The browser cannot reach Supabase. The login page shows a red notice that says w
 - Anyone can sign up as the admin of a new company (that is how a company starts). To restrict this, change `handle_new_user()` in `schema.sql` / `migration-007.sql`.
 - Manager accounts are linked to a store only by the server (the admin Team page uses `SUPABASE_SERVICE_ROLE_KEY`), so nobody can join another company's store from the browser.
 - A person who signs in with Google and has no account from an admin sees a message asking them to get an account from their admin.
-- Managers cannot edit or delete entries, by design. Admins can delete stores, products and supplies.
+- Managers can undo their own supply records; undo restores store stock and subtracts the quantity from the linked invoice item. Admins can delete stores, products and supplies.
