@@ -141,7 +141,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        <p className="relative m-0 text-[12.5px] text-[#7d99af]">© 2025 Marsandiis. All rights reserved.</p>
+        <p className="relative m-0 text-[12.5px] text-[#7d99af]">© 2026 Marsandiis. All rights reserved.</p>
       </div>
 
       {/* Right: form panel */}

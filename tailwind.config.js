@@ -61,6 +61,10 @@ module.exports = {
           '0%': { boxShadow: '0 0 0 0 rgba(124,255,178,.7)' },
           '70%, 100%': { boxShadow: '0 0 0 8px rgba(124,255,178,0)' },
         },
+        'whatsapp-ripple': {
+          '0%': { transform: 'scale(1)', opacity: '0.55' },
+          '80%, 100%': { transform: 'scale(1.65)', opacity: '0' },
+        },
       },
       animation: {
         fadeup: 'fadeup .45s ease both',
@@ -68,6 +72,7 @@ module.exports = {
         'float-slow': 'float-slow 6s ease-in-out infinite',
         'slide-down': 'slide-down .3s ease-out forwards',
         live: 'live 1.8s infinite',
+        'whatsapp-ripple': 'whatsapp-ripple 1.8s cubic-bezier(0, 0, 0.2, 1) infinite',
       },
     },
   },
