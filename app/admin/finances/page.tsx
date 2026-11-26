@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Kpi } from '@/components/Kpi'
 import { BankDepositForm, ExpenseForm, SalaryForm, VoidFinanceDialog } from '@/components/finances/FinanceForms'
 import { csv, download, fmtT, localDay, toast, useLive } from '@/lib/data'
-import { defaultAdminDashboardDateRange, readAdminDashboardDateRange, subscribeAdminDashboardDateRange, type AdminDashboardDateRange } from '@/lib/dashboardDate'
+import { defaultAdminDashboardDateRange, localDateString, readAdminDashboardDateRange, setAdminDashboardDateRange, subscribeAdminDashboardDateRange, type AdminDashboardDateRange } from '@/lib/dashboardDate'
 import {
   EXPENSE_LABELS, PAYMENT_METHODS, emptyFinanceSummary, loadFinances, loadFinanceSummary,
   payPeriodLabel, voidBankDeposit, voidMiscExpense, voidSalaryPayment,
@@ -99,6 +99,10 @@ export default function FinancesPage() {
 
     <div className="panel mb-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="m-0">Cash flow: {dateLabel}</h2><p className="mute mb-0">Uses the dashboard date range. Customer cash received is based on payment dates, not invoice dates.</p></div><span className="chip">Selected period</span></div>
+      {range.end < localDateString() ? <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] bg-warnsoft px-3 py-[10px] text-sm text-warn" role="status">
+        <span>This range ends on {endLabel}. Sales payments and finance records after that date are not included.</span>
+        <button className="btn ghost sm" onClick={() => setAdminDashboardDateRange(defaultAdminDashboardDateRange())}>Show current 7 days</button>
+      </div> : null}
       {summaryErr ? <p className="err" role="alert">{summaryErr}</p> : null}
       {!summary ? <p className="mute">Loading cash totals…</p> : <>
         <div className="content-grid mb-4">

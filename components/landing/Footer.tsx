@@ -66,7 +66,7 @@ export default function Footer() {
             <h4 className="mb-4 text-[14px] font-bold text-white">Contact</h4>
             <ul className="space-y-2.5 text-[14px] text-[#b9cfdf]">
               <li>{SUPPORT_EMAIL ? <a className={linkCls} href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> : <span>mahmudj1122@gmail.com</span>}</li>
-              <li>{SUPPORT_PHONE ? <a className={linkCls} href={`tel:${SUPPORT_PHONE.replace(/[^+\d]/g, '')}`}>{SUPPORT_PHONE}</a> : <span>+220 86 6697067</span>}</li>
+              <li>{SUPPORT_PHONE ? <a className={linkCls} href={`tel:${SUPPORT_PHONE.replace(/[^+\d]/g, '')}`}>{SUPPORT_PHONE}</a> : <span>+220 83 3897850</span>}</li>
               <li className="leading-relaxed">{SUPPORT_ADDRESS || 'Jambur, West Coast Region.'}</li>
             </ul>
           </div>

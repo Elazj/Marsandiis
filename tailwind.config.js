@@ -23,6 +23,9 @@ module.exports = {
         warnsoft: 'var(--warnsoft)',
         bad: 'var(--bad)',
         badsoft: 'var(--badsoft)',
+        whatsapp: 'var(--whatsapp)',
+        whatsappDark: 'var(--whatsapp-dark)',
+        whatsappInk: 'var(--whatsapp-ink)',
         on: 'var(--on)',
       },
       fontFamily: {
@@ -31,6 +34,7 @@ module.exports = {
       },
       boxShadow: {
         panel: 'var(--shadow)',
+        whatsapp: 'var(--whatsapp-shadow)',
       },
       backgroundImage: {
         marsandiis: 'var(--grad)',

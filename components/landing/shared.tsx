@@ -44,6 +44,8 @@ const paths: Record<string, ReactNode> = {
   warehouse: <><path d="M3 9.5L12 4l9 5.5V20H3z" /><path d="M7 20v-7h10v7M7 16.5h10" /></>,
   truck: <><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7" /><circle cx="7.5" cy="17.5" r="1.8" /><circle cx="17.5" cy="17.5" r="1.8" /></>,
   boxes: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" /><path d="M4 7.5l8 4.5 8-4.5M12 12v9" /></>,
+  barcode: <><path d="M3 5v14M6 5v14M9 5v14M12 5v14M15 5v14M18 5v14M21 5v14" /></>,
+  wallet: <><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H19v16H5.5A2.5 2.5 0 0 1 3 17.5z" /><path d="M3 8h16M16 12h5v4h-5a2 2 0 0 1 0-4Z" /></>,
   chart: <><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>,
   calendar: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
