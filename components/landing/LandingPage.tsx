@@ -7,6 +7,7 @@ import { Reveal, Container, SectionHead, I, Cubes, CheckRow } from './shared'
 import Footer from './Footer'
 import DemoModal from './DemoModal'
 import { DesktopFrame, PhoneFrame } from './DeviceFrames'
+import WhatsAppButton from './WhatsAppButton'
 
 const NAV = [
   { label: 'Home', href: '/#top', id: 'top' },
@@ -130,7 +131,7 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           </Reveal>
           <Reveal delay={180}>
             <p className="mx-auto mt-5 max-w-[560px] text-[17px] leading-relaxed text-[#9db8cc]">
-              Track stock across every store, record daily entries from any phone, and know what to reorder before a shelf runs empty — online or offline.
+              Track stock across every store, scan products as they leave, manage sales and receipts, and see your cash position — online or offline.
             </p>
           </Reveal>
           <Reveal delay={260}>
@@ -146,7 +147,7 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           </Reveal>
           <Reveal delay={330}>
             <p className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[13.5px] text-[#9db8cc]">
-              {['Free to start', 'Works on any phone', 'Your data stays private'].map((t) => (
+              {['Free to start', 'Barcode scanning', 'Receipts & cash tracking', 'Your data stays private'].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5"><I name="check" size={14} className="text-[#38a8ee]" sw={2.4} />{t}</span>
               ))}
             </p>
@@ -247,13 +248,17 @@ function Problems() {
 function Features() {
   const feats = [
     { icon: 'store', title: 'Multi-store management', text: 'Run every branch from one company space. Each store has its own stock, entries and manager accounts.' },
+    { icon: 'barcode', title: 'Barcode scan-out', text: 'Scan each product with a phone camera or USB/Bluetooth scanner, or type its barcode. Each scan adds one until the quantity is confirmed.' },
     { icon: 'calendar', title: 'Daily entries in seconds', text: 'Record customer supplies, losses and gifts on a simple product sheet built for the shop floor.' },
     { icon: 'wifioff', title: 'Works offline', text: 'No connection? Keep recording. Entries queue on the device and sync automatically — never twice.' },
+    { icon: 'receipt', title: 'Sales & invoices', text: 'Create and edit sales or invoices with multiple products, customer details, GMD or XOF, full or partial payments, and a saved rate on XOF invoices.' },
+    { icon: 'boxes', title: 'Stock & supply tracking', text: 'See remaining stock before selling. Overselling is blocked, and every invoice shows supplied and pending quantities.' },
+    { icon: 'receipt', title: 'Receipts & payment history', text: 'Give customers an invoice receipt and a separate receipt for every payment. Add your logo, print A4/58mm/80mm, save PDF or reprint.' },
+    { icon: 'wallet', title: 'Finances & cash vault', text: 'Recorded sales payments flow into the vault. Track salary totals, expenses and bank deposits, with GMD and XOF kept separate.' },
     { icon: 'chart', title: 'Stock forecasts', text: 'See recent usage and estimated days of cover for each product, so you reorder at the right time.' },
     { icon: 'bell', title: 'Low-stock alerts', text: 'Notices flag products that are low or finished across your stores, before customers notice.' },
-    { icon: 'receipt', title: 'Reports & analytics', text: 'Charts, KPIs and store reports show how stock moves. Managers send issues straight to the admin.' },
+    { icon: 'chart', title: 'Reports & analytics', text: 'Charts, KPIs, sales reports and store reports show stock, payments, outstanding balances and supply status. Managers send issues to the admin.' },
     { icon: 'shield', title: 'Private & secure', text: 'Each company\u2019s data is fully separated, with role-based access and one-click backups.' },
-    { icon: 'boxes', title: 'Sales, receipts & loans', text: 'Invoice and sales-number search is already here. A full sales, receipts and loans suite is on the way.', soon: true },
   ]
   return (
     <section id="features" className="scroll-mt-20 bg-panel py-20 lg:py-24">
@@ -266,10 +271,7 @@ function Features() {
                 <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-accsoft text-acc transition-colors group-hover:bg-acc group-hover:text-on">
                   <I name={f.icon} size={22} />
                 </span>
-                <h3 className="flex flex-wrap items-center gap-2 text-[16px] font-semibold text-ink">
-                  {f.title}
-                  {f.soon && <span className="rounded-full bg-warnsoft px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-warn">Coming soon</span>}
-                </h3>
+                <h3 className="text-[16px] font-semibold text-ink">{f.title}</h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-mute">{f.text}</p>
               </article>
             </Reveal>
@@ -283,8 +285,8 @@ function Features() {
 function HowItWorks() {
   const steps = [
     { n: '1', icon: 'users', title: 'Create your company', text: 'Sign up with your company name — it becomes your private space. No card needed, ready in a minute.' },
-    { n: '2', icon: 'boxes', title: 'Add stores & products', text: 'Set up each store, add products with starting quantities, and invite up to three managers per store.' },
-    { n: '3', icon: 'chart', title: 'Manage & monitor', text: 'Managers record daily entries from any phone. You watch stock, alerts and reports across every store.' },
+    { n: '2', icon: 'boxes', title: 'Add stores & products', text: 'Set up stores, add products with starting quantities and barcodes, and invite up to three managers per store.' },
+    { n: '3', icon: 'chart', title: 'Sell, supply & monitor', text: 'Create sales and invoices, scan products out, record finances and watch stock, payments and cash across every store.' },
   ]
   return (
     <section id="how-it-works" className="lp-dots scroll-mt-20 bg-bg py-20 lg:py-24">
@@ -325,11 +327,12 @@ function Showcase({ onDemo }: { onDemo: () => void }) {
             </div>
           </Reveal>
           <div>
-            <SectionHead eyebrow="Product showcase" title="Recording stock takes seconds" sub="One clean screen per task — no training manual required." />
+            <SectionHead eyebrow="Product showcase" title="From stock to sale to cash" sub="One connected workflow — no training manual required." />
             <div className="-mt-4 space-y-5">
-              <CheckRow title="Made for the shop floor" sub="Big touch targets and a simple product sheet managers can use between customers." />
-              <CheckRow title="Keeps working offline" sub="Entries are saved on the device and sync when the connection returns — never twice." />
-              <CheckRow title="Supplies, gifts, damage & losses" sub="Every kind of stock movement has its own entry type, so counts stay honest." />
+              <CheckRow title="Scan and verify every supply" sub="Managers enter an admin-created sales or invoice number, scan each product and confirm the exact quantity supplied." />
+              <CheckRow title="Receipts and cash stay connected" sub="Every payment gets its own receipt and feeds finances, alongside salary totals, expenses and bank deposits." />
+              <CheckRow title="Made for the shop floor" sub="Big touch targets and clear stock, supply and payment information managers can use between customers." />
+              <CheckRow title="Keeps working offline" sub="Entries and barcode scans are saved on the device and sync when the connection returns — never twice." />
             </div>
             <button onClick={onDemo} className={cx(btn('ghost', 'lg'), 'mt-8 gap-2')}>
               <I name="play" size={15} /> Take the tour
@@ -405,7 +408,7 @@ function Pricing() {
       price: 'Free',
       per: 'during early access',
       desc: 'Everything Marsandiis does today, for every company.',
-      feats: ['Your own private company space', 'Unlimited stores & products', 'Daily entries, alerts & forecasts', 'Offline mode with auto-sync', 'Reports, backups & manager accounts'],
+      feats: ['Your own private company space', 'Unlimited stores & products', 'Barcode scanning & offline entries', 'Sales, invoices & receipts', 'Finances, alerts & forecasts', 'Reports, backups & manager accounts'],
       cta: 'Start free',
       hot: false,
     },
@@ -425,7 +428,7 @@ function Pricing() {
       price: '[price]',
       per: 'per month · to be confirmed',
       desc: 'For distributors and multi-branch operations at scale.',
-      feats: ['Everything in Standard', 'Dedicated onboarding', 'Custom reporting', 'Early access to sales, receipts & loans'],
+      feats: ['Everything in Standard', 'Dedicated onboarding', 'Custom reporting'],
       cta: 'Start free today',
       hot: false,
     },
@@ -480,7 +483,10 @@ function Faq() {
     { q: 'Is my company\u2019s data safe?', a: 'Every company\u2019s data is fully separated from all others. Access is role-based: admins manage the company, managers only see their own stores. Connections are encrypted, and admins can export a full backup at any time.' },
     { q: 'Who can record daily entries?', a: 'Store managers record customer supplies, losses and gifts from the product sheets on any phone or computer. Admins see everything across stores, plus reports and notices.' },
     { q: 'How much does it cost?', a: 'Marsandiis is free during early access — every account gets all current features with no card required. The Standard and Pro plans on this page are a preview; prices will be confirmed before any billing begins.' },
-    { q: 'Can I track sales and receipts?', a: 'Invoice and sales-number search is available today. A full sales, receipts and loans suite is coming soon — Pro customers will get early access when it launches.' },
+    { q: 'Can I record sales and invoices?', a: 'Yes. Admins can create and edit sales and invoices with one or more products, customer details, GMD or XOF, a saved exchange rate for XOF invoices, and full or partial payments by Cash, Wave, APS or NAFA.' },
+    { q: 'Can managers supply products by barcode?', a: 'Yes. Managers can use a supported phone camera, USB/Bluetooth scanner or typed barcode. Each accepted code counts one whole item. They enter an admin-created sales or invoice number to verify the sale and see supplied and pending quantities.' },
+    { q: 'How do receipts and payment history work?', a: 'A new invoice automatically gets an invoice receipt, and every payment gets a separate receipt. Add your company logo and details, choose A4, 58mm or 80mm, print, download a PDF or reprint past receipts. Existing receipts keep their original details.' },
+    { q: 'Does Finances include sales payments?', a: 'Yes. Recorded Cash, Wave, APS and NAFA payments feed the vault by payment date. Salary totals, expenses and bank deposits reduce cash in the vault; net cash flow excludes deposits, and GMD and XOF stay separate.' },
   ]
   return (
     <section id="help" className="lp-plus scroll-mt-20 bg-bg py-20 lg:py-24">
@@ -548,6 +554,7 @@ export default function LandingPage() {
         <FinalCta />
       </main>
       <Footer />
+      <WhatsAppButton />
       <DemoModal open={demo} onClose={() => setDemo(false)} />
     </div>
   )

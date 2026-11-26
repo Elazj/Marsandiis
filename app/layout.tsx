@@ -9,20 +9,20 @@ export const metadata: Metadata = {
     template: '%s | Marsandiis',
   },
   description:
-    'Marsandiis helps wholesalers, retailers, warehouses and distributors manage stock across every store. Daily entries, low-stock alerts, forecasts and reports — online or offline.',
+    'Manage stock, barcode scan-out, sales, invoices, receipts and separate GMD/XOF finances across every store — online or offline.',
   applicationName: 'Marsandiis',
   openGraph: {
     type: 'website',
     siteName: 'Marsandiis',
     title: 'Marsandiis — Smarter Inventory. Stronger Business.',
     description:
-      'Manage stock across every store from one place. Daily entries, low-stock alerts, forecasts and reports — online or offline.',
+      'Manage stock, barcode scan-out, sales, receipts and finances across every store — online or offline.',
     images: [{ url: '/landing/og-image.jpg', width: 1200, height: 630, alt: 'Marsandiis — multi-store inventory management' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Marsandiis — Smarter Inventory. Stronger Business.',
-    description: 'Manage stock across every store from one place — online or offline.',
+    description: 'Manage stock, barcode scan-out, sales, receipts and finances across every store — online or offline.',
     images: ['/landing/og-image.jpg'],
   },
 }
